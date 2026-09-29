@@ -1,0 +1,14 @@
+interface:
+  display_name: Responsibility-Driven Design
+  short_description: Design and review systems with expert RDD
+  default_prompt: Use $responsibility-driven-design to design or review this system
+    through roles, responsibilities, and collaborations.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
