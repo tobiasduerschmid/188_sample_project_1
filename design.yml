@@ -1,0 +1,1437 @@
+schema_version: "1.0"
+name: Quarterly Class Planner
+status: reviewed_design
+requirements_baseline:
+  file: requirements.md
+  version: "1.0"
+  sha256: c1f68230f0bae6092bcb7a4d4dd88c73fb0f2ebcf2954f0b3d92a57a5fda7214
+  authority: All product behavior, limits, and acceptance thresholds come from this file.
+  precedence: Requirements govern outcomes; this design governs responsibility allocation and collaboration.
+
+context:
+  purpose: Help a UCLA undergraduate build, assess, preserve, and compare alternatives for one quarter before enrolling elsewhere.
+  depth: Standard RDD design with precise contracts for temporal rules, academic uncertainty, catalog adoption, and concurrent persistence.
+  actors:
+    ACT-001: Student editing plans in one browser profile on one device.
+    ACT-002: Authorized catalog maintainer publishing complete quarter snapshots.
+  external_participants:
+    EXT-001: Public catalog distribution holding an atomic manifest and immutable catalog versions.
+    EXT-002: Browser platform providing profile-isolated transactional persistence, clock, timezone support, rendering, and file download.
+    EXT-003: Institutional enrollment and authoritative academic systems, referenced for human action but never mutated by this system.
+  inherited_assumptions: [A-01, A-02, A-03, A-04, A-05, A-06]
+  exclusions:
+    - Enrollment, dropping, waitlist joining, seat reservation, payments, and institutional record mutation.
+    - Official degree certification, transcript retrieval, automatic transfer equivalence, and grade prediction.
+    - Multi-quarter optimization, automatic scheduling, recommendations, ratings, and travel-time estimation.
+    - Accounts, cross-device synchronization, shared editing, calendar synchronization, and summary import.
+  design_story: >-
+    A student edits a private quarter plan against one identifiable catalog version. The plan
+    preserves intentional choices, including incomplete or conflicting drafts. Domain participants
+    explain section structure, dated time conflicts, academic evidence, and unit load independently.
+    A session coordinates those answers into one revision-consistent view and preserves accepted
+    inputs through a transactional repository. Public catalog changes are reviewed before adoption.
+    The design keeps student intent, catalog evidence, derived judgments, and durable receipts distinct.
+  themes:
+    THM-001: Preserve student intent while making incomplete and conflicting work inspectable.
+    THM-002: Own each interpretation of catalog relationships, time, and academic evidence once.
+    THM-003: Bind every derived answer to an exact plan revision and catalog version.
+    THM-004: Keep personal state inside the browser profile and public publication free of private inputs.
+    THM-005: Make failure recovery as accessible and explicit as successful planning.
+  problem_classification:
+    core_routine: [catalog identity, section compatibility, academic truth tables, interval overlap, scope boundaries]
+    core_revealing: [interrupted saves and competing tabs, performance at the specified limits, first-use accessibility and usability]
+    consequence: Lost planning work or misleading planning advice; no authority to perform enrollment or certify a degree.
+    bounded_uncertainty: Runtime performance and user-study outcomes require implementation evidence; a design review cannot establish them.
+
+system_responsibilities:
+  SYS-001:
+    obligation: Provide attributable quarter offerings and truthful catalog discovery.
+    primary_owner: CAN-006
+    requirements: [FR-01, FR-02, FR-04, FR-05, QR-07]
+    completion: A selected quarter has inspectable source/version/age and correct search results, or an explicit unavailable state with retry.
+  SYS-002:
+    obligation: Accept and publish a whole valid catalog without partially changing the active version.
+    primary_owner: CAN-005
+    requirements: [FR-03, "section 4.2"]
+    completion: Publication yields one identifiable version, or record-specific errors with the prior active manifest intact.
+  SYS-003:
+    obligation: Preserve valid planning inputs while allowing incomplete drafts and controlled edits.
+    primary_owner: CAN-003
+    requirements: [FR-06, FR-07, FR-08, FR-09, FR-11, FR-12, FR-13, FR-19, FR-21]
+    completion: An accepted edit changes only its intended inputs; rejected edits retain the prior draft and identify the reason.
+  SYS-004:
+    obligation: Explain actual dated conflicts and every reason a time check remains incomplete.
+    primary_owner: CAN-008
+    requirements: [FR-14, FR-15, FR-17, FR-18, "section 4.3"]
+    completion: All required active occurrences and incomplete checks are represented without phantom or hidden conflicts.
+  SYS-005:
+    obligation: Explain unit load, supported academic eligibility, and conditional target progress.
+    primary_owner: CAN-009
+    requirements: [FR-10, FR-20, FR-22, FR-23, "section 4.4"]
+    completion: Each academic category has a separately explained result derived only from the stated inputs and supported rules.
+  SYS-006:
+    obligation: Preserve and recover private alternatives without silent overwrite, partial save, or silent catalog replacement.
+    primary_owner: CAN-002
+    requirements: [FR-24, FR-25, FR-26, FR-27, FR-28, QR-05, QR-06]
+    completion: The student sees a receipt for the current saved revision, or an explicit recoverable unsaved/conflict state.
+  SYS-007:
+    obligation: Present planning and recovery actions accessibly with coherent, timely results.
+    primary_owner: CAN-001
+    requirements: [FR-16, QR-01, QR-02, QR-03, QR-04, QR-08]
+    completion: All views expose the same assessed revision and satisfy the specified accessibility, response-time, and user-validation checks.
+  SYS-008:
+    obligation: Hand the student a complete readable record of current planning inputs and results.
+    primary_owner: CAN-013
+    requirements: [FR-29]
+    completion: A student-initiated UTF-8 download contains the full reconstruction inputs, provenance, checks, and accurate save state.
+  unassigned: []
+
+neighborhoods:
+  NBR-001:
+    name: Student interaction
+    participants: [CAN-001, CAN-002, CAN-013]
+    public_entries: [CAN-001]
+    hidden: Session generations, queued persistence, and rendering state.
+    outward_paths: Session requests plan changes, catalog access, assessments, and repository actions; exporter receives a frozen export input.
+  NBR-002:
+    name: Planning domain
+    participants: [CAN-003, CAN-004, CAN-007]
+    public_entries: [CAN-003, CAN-004, CAN-007]
+    hidden: Plan representation, catalog indexes, and timezone-resolution mechanics.
+    outward_paths: None to interaction, storage, or network; callers supply immutable domain values.
+  NBR-003:
+    name: Plan assessment
+    participants: [CAN-008, CAN-009, CAN-010]
+    public_entries: [CAN-010]
+    hidden: Conflict traversal and academic expression evaluation.
+    outward_paths: Read-only catalog interpretation and institution-calendar interpretation.
+  NBR-004:
+    name: Catalog lifecycle
+    participants: [CAN-005, CAN-006]
+    public_entries: [CAN-005, CAN-006]
+    hidden: Raw import representation, publication staging, retrieval, and retained-catalog indexing.
+    outward_paths: Validated CatalogSnapshot values, public catalog distribution, institution-calendar validation, and profile snapshot retention.
+  NBR-005:
+    name: Private persistence
+    participants: [CAN-011, CAN-012]
+    public_entries: [CAN-011, CAN-012]
+    hidden: Transaction mechanics, durable record layout, and revision arbitration.
+    outward_paths: Browser profile storage only; no network, catalog publishing, or academic decisions.
+
+collaboration_conventions:
+  composition: >-
+    A browser composition root creates one view, session, catalog library, repository, assessment
+    coordinator, exporter, and platform adapters per tab. It injects the explicitly listed capabilities.
+    Pure domain/evaluation providers may be shared. A separate maintainer composition root creates
+    the catalog boundary with publication authority; the browser receives validation authority only.
+  reference_rules:
+    - An injected collaborator lasts for the tab or maintainer command; teardown cancels outstanding reads and releases listeners.
+    - Plan values and catalog snapshots are immutable parameters or results, retained by the session while in use.
+    - A provider never discovers collaborators through a global registry or through another participant's private records.
+    - An asynchronous result carries its request identity; stale results cannot change the current plan or assessment.
+    - All listed calls are local except catalog-distribution and browser-platform adapter calls.
+  dependency_rule: Components may call only the collaborators listed below; derived views do not bypass domain or persistence owners.
+  error_convention: Expected failures are typed results containing a reason, affected identities, preserved-state description, and permitted recovery actions.
+
+components:
+  CAN-001:
+    name: PlannerView
+    status: accepted
+    role: {id: "ROL-001", name: "StudentInterfacer", substitution: "Presentation implementation may change while preserving observable interactions."}
+    stereotypes: [interfacer]
+    purpose: Translate student intentions and communicate coherent planning and recovery outcomes.
+    owns: [focus and navigation within the current view, form text before submission, layout and accessible labeling]
+    responsibilities:
+      RSP-001: {kind: "do", obligation: "Present catalog, schedule, academic results, and persistence state with equivalent keyboard and assistive access."}
+      RSP-002: {kind: "do", obligation: "Collect explicit choices and confirmations without hiding or silently replacing student input."}
+      RSP-003: {kind: "decide", obligation: "Render only the current complete assessment or an explicit pending state."}
+    collaborators:
+      - {target: "CAN-002", via: "injected session capability", reason: "Submit intentions and receive revision-tagged view states."}
+    provides:
+      present: {responsibility: "RSP-001", input: "ViewState", output: "Accessible rendered state"}
+      collect_intent: {responsibility: "RSP-002", input: "Student action", output: "Intent sent to PlanSession"}
+    invariants:
+      - Does not decide conflicts, course eligibility, target contribution, section compatibility, or durable success.
+      - All diagnostic numbers and details in one view refer to the same AssessmentKey.
+      - Text labels accompany status color; input errors are associated with fields and focus remains on the edited control.
+    quality: [FR-16, QR-03, QR-04, QR-08]
+
+  CAN-002:
+    name: PlanSession
+    status: accepted
+    role: {id: "ROL-002", name: "PlanningCoordinator", substitution: "One session state machine per tab; no alternate product policy."}
+    stereotypes: [coordinator]
+    purpose: Sequence one student's planning work and its recovery without implementing domain rules.
+    owns: [current plan and pinned catalog references, working generation, durable base revision, save queue, pending navigation, undo lifetime]
+    responsibilities:
+      RSP-004: {kind: "do", obligation: "Coordinate accepted input changes, complete assessments, persistence, and view publication."}
+      RSP-005: {kind: "decide", obligation: "Admit navigation, deletion, catalog adoption, and competing-revision recovery only after required student choices."}
+      RSP-006: {kind: "know", obligation: "Distinguish the working draft, acknowledged durable revision, current assessment, and outstanding requests."}
+      RSP-007: {kind: "do", obligation: "Preserve current inputs during failed saves and provide retry or complete summary recovery."}
+    collaborators:
+      - {target: "CAN-003", via: "current immutable plan capability", reason: "Apply a requested edit and preserve plan invariants."}
+      - {target: "CAN-006", via: "injected catalog library", reason: "Select or retain a catalog and obtain adoption evidence."}
+      - {target: "CAN-004", via: "exact catalog capability returned by the library and retained until context close", reason: "Search and inspect the public snapshot without exposing library internals."}
+      - {target: "CAN-010", via: "injected assessment capability", reason: "Obtain one complete assessment for the accepted draft."}
+      - {target: "CAN-011", via: "injected repository", reason: "List, create, save, copy, delete, or reopen durable alternatives."}
+      - {target: "CAN-013", via: "injected exporter", reason: "Download a frozen current plan and matching assessment."}
+      - {target: "CAN-001", via: "view sink registered by the composition root and released at tab teardown", reason: "Publish revision-tagged outcomes without depending on DOM or view implementation details."}
+    provides:
+      handle_intent: {responsibility: "RSP-004", input: "Intent and active session state", output: "ViewState or explicit decision request"}
+      resolve_recovery: {responsibility: "RSP-007", input: "Student recovery choice", output: "Preserved draft or confirmed transition"}
+    invariants:
+      - Domain judgments are delegated; the session decides sequencing and presentation eligibility only.
+      - A saved receipt for an older working generation cannot mark a newer generation saved.
+      - A plan cannot silently switch quarter or catalog, and unsaved input cannot be discarded by navigation or a late callback.
+    quality: [FR-24, FR-26, FR-27, FR-28, QR-01, QR-02, QR-06]
+
+  CAN-003:
+    name: QuarterPlan
+    status: accepted
+    role: {id: "ROL-003", name: "EditableQuarterPlan", substitution: "Immutable value with domain operations; representation is private."}
+    stereotypes: [information_holder, structurer]
+    purpose: Own one quarter's student-entered planning intent and valid transitions of that intent.
+    owns: [fixed quarter identity, plan name, course/component selections, chosen units, unavailable times, history, target definitions, history completeness]
+    responsibilities:
+      RSP-008: {kind: "know", obligation: "Supply all inputs required to reproduce this plan without relying on rendered results."}
+      RSP-009: {kind: "decide", obligation: "Accept or reject edits according to plan-local syntax, limits, identity, and selection rules."}
+      RSP-010: {kind: "do", obligation: "Produce an independent new plan value or reversible course removal while preserving unrelated inputs."}
+      RSP-011: {kind: "do", obligation: "Adopt a reviewed catalog while preserving invalidated choices as explicit unresolved intent."}
+    collaborators:
+      - {target: "CAN-004", via: "catalog snapshot parameter", reason: "Resolve declared course identities and classify allowed component relationships."}
+      - {target: "CAN-007", via: "calendar capability supplied at construction", reason: "Validate personal intervals against institution-local dates."}
+    provides:
+      edit: {responsibility: "RSP-009", input: "PlanCommand and pinned CatalogSnapshot", output: "ChangedPlan with optional RemovalMemento or EditRejected"}
+      restore_or_copy: {responsibility: "RSP-010", input: "Complete recorded inputs or frozen copy inputs with a new identity and valid name", output: "Independent QuarterPlan with preserved unresolved records"}
+      adopt_catalog: {responsibility: "RSP-011", input: "ReviewedAdoptionToken and new CatalogSnapshot", output: "ChangedPlan preserving unresolved identities"}
+      describe_inputs: {responsibility: "RSP-008", input: "none", output: "Immutable PlanInputs"}
+    invariants:
+      - One immutable quarter per plan and at most one effective selection/history group per known canonical course identity; unresolved original records may be retained inside a group.
+      - Invalid form edits retain the previous value; valid incomplete drafts remain editable.
+      - Component incompatibility on explicit addition is rejected; lecture replacement and catalog adoption retain affected old choices for resolution.
+      - No cross-plan shared mutable input and no direct persistence or derived academic status.
+    quality: [QR-06]
+
+  CAN-004:
+    name: CatalogSnapshot
+    status: accepted
+    role: {id: "ROL-004", name: "CatalogKnowledge", substitution: "Any validated immutable snapshot with this semantic contract."}
+    stereotypes: [information_holder, structurer, service_provider]
+    purpose: Interpret the facts and relationships of exactly one accepted catalog version.
+    owns: [version-specific course identities and equivalences, offering/component relationships, catalog search semantics, selection-fact interpretation]
+    responsibilities:
+      RSP-012: {kind: "know", obligation: "Supply attributable course, section, rule, and meeting facts without guessing missing information."}
+      RSP-013: {kind: "decide", obligation: "Classify selections as complete, incomplete, incompatible, canceled, removed, or unit-unresolved using this version."}
+      RSP-014: {kind: "do", obligation: "Find offerings using the exact course and same-section search predicates."}
+    collaborators: []
+    provides:
+      search: {responsibility: "RSP-014", input: "SearchQuery", output: "Ordered offering summaries"}
+      inspect: {responsibility: "RSP-012", input: "Course or section identity", output: "Complete detail or explicit unresolved identity"}
+      interpret_plan: {responsibility: "RSP-013", input: "PlanInputs", output: "SelectionFacts with evidence for each course/component"}
+    invariants:
+      - Identities are canonicalized only through supplied equivalence declarations.
+      - The snapshot is immutable; changing catalog content creates a different accepted version.
+      - Search interpretation and bundle completeness are not reimplemented by clients.
+      - It contains no student-private state and never claims current institutional truth beyond its provenance.
+
+  CAN-005:
+    name: CatalogBoundary
+    status: accepted
+    role: {id: "ROL-005", name: "CatalogAcceptance", substitution: "Shared semantic validator used by browser retrieval and maintainer publication."}
+    stereotypes: [interfacer, coordinator]
+    purpose: Convert untrusted catalog input into valid versioned knowledge and publish only complete accepted versions.
+    owns: [catalog input validity, field-level error attribution, publication attempt outcome]
+    responsibilities:
+      RSP-015: {kind: "decide", obligation: "Accept a complete catalog or return all detected record-specific violations without partial publication."}
+      RSP-016: {kind: "do", obligation: "Construct validated immutable catalog knowledge and preserve unsupported rule text as manual-review evidence."}
+      RSP-017: {kind: "do", obligation: "Stage and activate one catalog version under maintainer authority; preserve the prior manifest on definite failure and reconcile uncertain activation by read-back."}
+    collaborators:
+      - {target: "CAN-007", via: "injected calendar capability", reason: "Validate every supplied occurrence and timezone boundary."}
+      - {target: "CAN-004", via: "constructs after successful validation", reason: "Return a trusted snapshot and its interpretation capabilities."}
+      - {target: "EXT-001", via: "publication capability injected only into maintainer command", reason: "Publish immutable content before atomically changing the active manifest."}
+    provides:
+      accept: {responsibility: "RSP-015", input: "RawCatalogDocument", output: "CatalogSnapshot or CatalogInvalid with field paths"}
+      publish: {responsibility: "RSP-017", input: "RawCatalogDocument and PublicationCapability", output: "PublicationReceipt, definite unchanged-manifest failure, or indeterminate activation requiring verification"}
+    invariants:
+      - The browser-side instance has no publication capability.
+      - Publication exposes only accepted public catalog fields, never serialized plan objects.
+      - Reuse of a quarter/version with different content is rejected; validation alone never changes the active catalog.
+
+  CAN-006:
+    name: CatalogLibrary
+    status: accepted
+    role: {id: "ROL-006", name: "CatalogAccess", substitution: "Read-only public source adapter can change behind the accepted catalog contract."}
+    stereotypes: [interfacer, structurer]
+    purpose: Obtain and retain catalog versions, expose their age, and describe the effect of adopting a replacement.
+    owns: [available-quarter discovery, retained snapshot references, fetch state, catalog age and version notices, adoption preview identity]
+    responsibilities:
+      RSP-018: {kind: "do", obligation: "Load a requested catalog or return a retained usable snapshot with truthful retrieval and freshness state."}
+      RSP-019: {kind: "know", obligation: "Explain a snapshot's source, timestamp, demonstration status, and relation to the latest known version."}
+      RSP-020: {kind: "do", obligation: "Produce a complete adoption impact tied to the current draft and exact proposed version."}
+    collaborators:
+      - {target: "EXT-001", via: "configured read-only source adapter", reason: "Fetch public manifest and immutable versions without transmitting plan inputs."}
+      - {target: "CAN-005", via: "injected acceptance capability", reason: "Validate received catalog data before admitting it."}
+      - {target: "CAN-012", via: "injected profile storage", reason: "Retain/read immutable catalogs for later inspection and retrieval failure."}
+      - {target: "CAN-004", via: "accepted snapshot results", reason: "Compare identities and interpretations from old and proposed versions."}
+      - {target: "EXT-002", via: "injected clock capability", reason: "Compute visible age from the supplied timestamp."}
+    provides:
+      discover: {responsibility: "RSP-018", input: "Retry or quarter-list request", output: "Available quarters or unavailable state"}
+      load: {responsibility: "RSP-018", input: "QuarterId or exact CatalogRef", output: "SnapshotAccessResult"}
+      preview_adoption: {responsibility: "RSP-020", input: "PlanInputs, working generation, old and new CatalogSnapshot", output: "AdoptionImpact and ReviewedAdoptionToken"}
+    invariants:
+      - An external fetch never mutates a plan or replaces its pinned version.
+      - A failed retrieval cannot erase a retained version; retention failure remains visible rather than pretending future availability.
+      - Every impact includes selected section, meeting, units, academic-rule, identity, and linkage changes affecting the plan.
+
+  CAN-007:
+    name: InstitutionCalendar
+    status: accepted
+    role: {id: "ROL-007", name: "DatedTimeInterpreter", substitution: "Timezone library may change only under the same temporal conformance cases."}
+    stereotypes: [service_provider]
+    purpose: Give all temporal facts one consistent institution-local meaning.
+    owns: [local-time resolution policy, recurrence/exception semantics, quarter-bound interpretation]
+    responsibilities:
+      RSP-021: {kind: "decide", obligation: "Reject invalid or undisambiguated local times and out-of-quarter intervals with precise correction information."}
+      RSP-022: {kind: "do", obligation: "Expand valid meetings and personal recurrences to dated half-open occurrences without changing local clock time."}
+    collaborators:
+      - {target: "EXT-002", via: "injected timezone capability", reason: "Resolve institution timezone offsets for the supplied dates."}
+    provides:
+      validate: {responsibility: "RSP-021", input: "TemporalDefinition and Quarter", output: "Validated temporal value or TemporalError"}
+      occurrences: {responsibility: "RSP-022", input: "Validated temporal definitions and Quarter", output: "Dated occurrences with stable source identities"}
+    invariants:
+      - Device timezone does not influence meaning or display data.
+      - Inclusive recurrence start-date bounds, cancellations, replacements, supplied exams, and overnight ends are preserved.
+      - TBA and asynchronous activities generate no invented intervals.
+
+  CAN-008:
+    name: ScheduleEvaluator
+    status: accepted
+    role: {id: "ROL-008", name: "TimeFeasibility", substitution: "Conflict algorithm may change under the same exhaustive pair contract."}
+    stereotypes: [service_provider]
+    purpose: Explain dated class conflicts and the completeness of the time check.
+    owns: [conflict decision, pair identity and overlap evidence, time-check completeness]
+    responsibilities:
+      RSP-023: {kind: "decide", obligation: "Identify every relevant overlap and every missing input preventing a complete time check."}
+      RSP-024: {kind: "do", obligation: "Supply shared occurrence and unscheduled-activity data for grid, text, and summary views."}
+    collaborators:
+      - {target: "CAN-007", via: "injected calendar capability", reason: "Obtain correctly dated active class and personal occurrences."}
+    provides:
+      evaluate: {responsibility: "RSP-023", input: "PlanInputs and SelectionFacts", output: "ScheduleReport"}
+    invariants:
+      - Half-open dated overlap includes same-course components and exams but excludes personal-personal pairs.
+      - Canceled/removed sections produce no active occurrence; other active components still participate.
+      - A zero conflict count never clears TBA, unknown exams, or missing/incompatible/canceled/removed required components.
+      - Full/waitlisted/unknown availability alone does not make otherwise known meeting times incomplete.
+      - No conflict or unverified result edits the plan or supplies a replacement section.
+
+  CAN-009:
+    name: AcademicEvaluator
+    status: accepted
+    role: {id: "ROL-009", name: "AcademicEvidenceInterpreter", substitution: "Implementation may change; supported rule semantics remain fixed."}
+    stereotypes: [service_provider]
+    purpose: Interpret supplied academic evidence and selected-unit load without claiming institutional authority.
+    owns: [history truth interpretation, prerequisite/corequisite truth tables, unit-load arithmetic, target contribution and status precedence]
+    responsibilities:
+      RSP-025: {kind: "decide", obligation: "Explain supported prerequisite and corequisite results with completed, projected, missing, or unsupported evidence."}
+      RSP-026: {kind: "decide", obligation: "Calculate completed/projected target contributions, remaining work, and uncertainty without double counting."}
+      RSP-027: {kind: "do", obligation: "Calculate selected units and classify a fully resolved total against an optional target range."}
+    collaborators: []
+    provides:
+      evaluate: {responsibility: "RSP-025", input: "PlanInputs and SelectionFacts with catalog academic evidence", output: "AcademicReport including target and unit-load results"}
+    invariants:
+      - Selected-unit inclusion is distinct from projected-credit and concurrent-corequisite inclusion.
+      - Completed work takes precedence over retaking the same canonical course.
+      - Unknown evidence is not false, zero credit, or a passed rule.
+      - Targets evaluate independently; time and availability warnings remain visible alongside conditional projections.
+      - No result certifies a degree, seat, or enrollment eligibility beyond supported student-reported checks.
+
+  CAN-010:
+    name: PlanAssessment
+    status: accepted
+    role: {id: "ROL-010", name: "AssessmentCoordinator", substitution: "Local execution may later move off the UI thread without changing the result contract."}
+    stereotypes: [coordinator]
+    purpose: Assemble independently owned judgments into one complete result for one immutable input revision.
+    owns: [assessment correlation, completeness of report assembly]
+    responsibilities:
+      RSP-028: {kind: "do", obligation: "Obtain shared selection facts and collect schedule and academic reports for exactly the same inputs."}
+      RSP-029: {kind: "decide", obligation: "Publish a complete assessment or an assessment failure, never a partial all-clear."}
+    collaborators:
+      - {target: "CAN-004", via: "catalog parameter", reason: "Obtain one shared interpretation of bundle and identity facts."}
+      - {target: "CAN-008", via: "injected time evaluator", reason: "Request schedule feasibility and occurrence evidence."}
+      - {target: "CAN-009", via: "injected academic evaluator", reason: "Request academic and unit-load judgments."}
+    provides:
+      assess: {responsibility: "RSP-028", input: "AssessmentKey, PlanInputs, CatalogSnapshot", output: "Assessment or AssessmentFailed"}
+    invariants:
+      - Does not reproduce either evaluator's policies or turn their categories into a single valid/invalid verdict.
+      - Every report shares the same immutable inputs and exact catalog reference.
+      - Failure in either evaluator prevents publication of a completed assessment.
+
+  CAN-011:
+    name: PlanRepository
+    status: accepted
+    role: {id: "ROL-011", name: "PrivatePlanPersistence", substitution: "Storage realization must pass atomicity, privacy, and concurrency contracts."}
+    stereotypes: [information_holder, structurer, interfacer]
+    purpose: Own the durable collection of private plans and arbitrate competing changes atomically.
+    owns: [durable plan revisions, quarter-local name uniqueness, profile plan capacity, committed mutation receipts, deleted identity state]
+    responsibilities:
+      RSP-030: {kind: "know", obligation: "Return complete acknowledged plan inputs and their pinned catalog references."}
+      RSP-031: {kind: "decide", obligation: "Accept a complete revision only when its base, unique name, and collection capacity remain valid inside the same transaction."}
+      RSP-032: {kind: "do", obligation: "Create independent alternatives and delete confirmed revisions without permitting stale resurrection."}
+      RSP-033: {kind: "do", obligation: "Return durable receipts or explicit preserved-state failures and recover uncertain write outcomes."}
+    collaborators:
+      - {target: "CAN-012", via: "injected transactional storage", reason: "Serialize competing collection updates and commit plans, receipts, and required catalog bytes together."}
+      - {target: "CAN-003", via: "injected plan reconstitution capability", reason: "Restore verified PlanInputs without implementing plan-local domain policies."}
+    provides:
+      list_and_open: {responsibility: "RSP-030", input: "QuarterId and optional PlanId", output: "Complete saved alternatives or ReadFailure"}
+      check_name: {responsibility: "RSP-031", input: "QuarterId and proposed normalized name excluding current PlanId", output: "Available or field-specific duplicate-name rejection; final commit still rechecks atomically"}
+      commit: {responsibility: "RSP-031", input: "CommitRequest", output: "SaveReceipt or CommitFailure"}
+      duplicate: {responsibility: "RSP-032", input: "FrozenPlanInputs, new name and identity, CatalogSnapshot", output: "SaveReceipt or CommitFailure"}
+      delete: {responsibility: "RSP-032", input: "ConfirmedDeleteRequest", output: "DeleteReceipt or Conflict"}
+      resolve_receipt: {responsibility: "RSP-033", input: "MutationId and expected content fingerprint", output: "Committed receipt, known aborted, or indeterminate"}
+    invariants:
+      - No last-writer-wins, automatic merge, or silent retry against a newer base revision.
+      - A stale update cannot recreate a deleted PlanId; creating or duplicating requires a fresh identity.
+      - Name uniqueness and the 20-plan limit are checked atomically, including concurrent creates and renames.
+      - No saved acknowledgment precedes transaction completion; catalogs needed by an acknowledged plan are retained with it.
+
+  CAN-012:
+    name: ProfileStorage
+    status: accepted
+    role: {id: "ROL-012", name: "AtomicProfileStore", substitution: "Browser adapter behind a physical atomic-storage capability."}
+    stereotypes: [interfacer]
+    purpose: Provide profile-local all-or-nothing persistence and accurate platform-failure translation.
+    owns: [physical transactions, stored schema envelope, atomic write completion and abort signaling]
+    responsibilities:
+      RSP-034: {kind: "do", obligation: "Commit an authorized local transaction completely or retain the prior complete records."}
+      RSP-035: {kind: "do", obligation: "Return isolated immutable reads and distinguish denied, exhausted, corrupt, and interrupted storage outcomes."}
+    collaborators:
+      - {target: "EXT-002", via: "browser profile storage adapter", reason: "Execute isolated reads and serializable read-modify-write transactions."}
+    provides:
+      transact: {responsibility: "RSP-034", input: "Declared store scope and local transaction operation", output: "Committed result or aborted failure"}
+      read: {responsibility: "RSP-035", input: "Record keys", output: "Complete records or StorageFailure"}
+      retain_catalog: {responsibility: "RSP-034", input: "Validated immutable catalog envelope", output: "Retained receipt or unchanged-state failure"}
+    invariants:
+      - Does not decide plan names, capacity, catalog validity, academic policy, or student recovery choices.
+      - No request sends private data to a server or a different browser profile.
+      - Existing immutable catalog content cannot be overwritten with different bytes under the same identity.
+
+  CAN-013:
+    name: PlanSummary
+    status: accepted
+    role: {id: "ROL-013", name: "PortablePlanExplanation", substitution: "Text formatting may change without losing any required field."}
+    stereotypes: [interfacer, service_provider]
+    purpose: Produce a human-readable, reconstructable record of a frozen current draft.
+    owns: [UTF-8 summary representation and download outcome]
+    responsibilities:
+      RSP-036: {kind: "do", obligation: "Render every reconstruction input, attributable check result, unresolved item, and save state."}
+      RSP-037: {kind: "do", obligation: "Deliver the text through a student-initiated download without changing or saving the plan."}
+    collaborators:
+      - {target: "EXT-002", via: "injected download capability", reason: "Deliver a local UTF-8 file and release temporary download resources."}
+    provides:
+      download: {responsibility: "RSP-036", input: "FrozenExportInput", output: "DownloadStarted or DownloadFailed with current draft retained"}
+    invariants:
+      - No independent conflict/academic computation and no serialization of a stale assessment as current.
+      - Includes invalid and unsaved choices; labels output as a plan and never as enrollment confirmation.
+      - A failed download does not dismiss recovery or mutate private state.
+
+candidate_disposition:
+  accepted: All CAN-001 through CAN-013 have explicit roles, clients through declared collaborations, and owned obligations above.
+  alternatives:
+    - candidate: AllKnowingPlanner
+      disposition: split
+      resulting_participants: [CAN-002, CAN-003, CAN-008, CAN-009, CAN-011]
+      reason: Workflow order, student intent, domain interpretation, and durable arbitration have different authorities and failure conditions.
+    - candidate: SeparateWeeklyGridChecker
+      disposition: merged
+      resulting_participants: [CAN-008]
+      reason: The grid, text view, and download must share occurrence/conflict evidence rather than duplicate decisions.
+    - candidate: StudentAccountService
+      disposition: rejected
+      reason: Browser-profile continuity is required; accounts and cross-device identity are outside scope.
+    - candidate: AutomaticScheduleGenerator
+      disposition: rejected
+      reason: Students manually choose sections; suggesting or selecting replacements would add requirements.
+    - candidate: GenericDegreeRulePluginEngine
+      disposition: rejected
+      reason: Only bounded stated rule forms are supported; unsupported rules require visible manual review.
+
+information_model:
+  classification:
+    authoritative_intent: QuarterPlan inputs, with a working copy owned by PlanSession and a committed revision owned by PlanRepository.
+    authoritative_catalog_interpretation: One CatalogSnapshot interprets its supplied version; the institution remains authoritative outside this planner.
+    derived: SelectionFacts, occurrences, conflicts, academic results, catalog diffs, and UI indexes; never independent mutable truth.
+    durable_receipt: PlanRepository establishes that a specific complete input revision committed.
+  types:
+    CatalogRef:
+      fields: [quarter_id, version, content_digest]
+      meaning: Exact immutable snapshot identity, distinct from latest-known version and timestamp age.
+    PlanInputs:
+      fields:
+        - plan_id and trimmed name
+        - fixed quarter_id and pinned CatalogRef
+        - stable selection identities with course references, chosen component identifiers, and variable-unit choices
+        - unresolved selections with last-known source details and reason
+        - personal dated or recurring unavailable intervals and optional labels
+        - unit_target as absent or inclusive minimum/maximum
+        - coursework records with entered reference, mapped identity when known, status, and optional earned units
+        - history_complete declaration
+        - academic targets with name, eligible identities, count-or-units kind, and threshold
+      exclusions: No persisted conflict status, academic verdict, rendered grid, or invented enrollment state.
+    AssessmentKey:
+      fields: [plan_id, working_generation, catalog_ref]
+      meaning: Session-local identity used to reject late or mismatched derived results.
+    SelectionFacts:
+      fields:
+        - full quarter envelope including institution timezone, instructional dates, exam span, and bounds
+        - one effective canonical-course group with retained original identity evidence
+        - required counts, allowed combinations, selected component facts, and missing/incompatible components
+        - existing, canceled, or removed status for every selected section
+        - known, unchosen, or invalid selected-unit value with reasons
+        - active temporal definitions, asynchronous activities, TBA activities, and exam knowledge
+        - prerequisites/corequisites and unsupported source rules
+        - resolution of history and target identities against this exact catalog
+      provider: CAN-004
+      rule: Clients use these interpreted facts rather than navigating raw catalog structures or redeciding bundle compatibility.
+    ScheduleReport:
+      fields: [assessment_key, occurrences, unscheduled_activities, conflict_pairs, incomplete_reasons, known_conflict_count, verification_status]
+    AcademicReport:
+      fields: [assessment_key, eligibility_by_course, manual_review_conditions, selected_unit_result, target_results, contribution_explanations]
+    Assessment:
+      fields: [assessment_key, schedule_report, academic_report, selection_diagnostics, availability_diagnostics]
+      meaning: A complete collection of separate judgments, never an aggregate eligibility guarantee.
+    SaveReceipt:
+      fields: [plan_id, mutation_id, originating_session_id, working_generation, content_fingerprint, committed_revision, catalog_ref]
+      meaning: Issued only after physical commit; content equality alone is insufficient to acknowledge a later session generation.
+    CommitRequest:
+      fields: [operation_kind, plan_inputs, expected_revision, mutation_id, originating_session_id, working_generation, content_fingerprint, validated_catalog_envelope]
+      operation_kinds: [create, replace, duplicate]
+    ConfirmedDeleteRequest:
+      fields: [plan_id, displayed_name, expected_revision, mutation_id, explicit_confirmation]
+    ReviewedAdoptionToken:
+      fields: [plan_id, working_generation, old_catalog_ref, new_catalog_ref, impact_fingerprint]
+      meaning: A preview is valid only for these exact inputs; later edits require a fresh preview.
+    FrozenExportInput:
+      fields: [plan_inputs, exact_catalog_details, matching_assessment_or_explicit_pending_or_failed_check_state, save_state_at_capture, capture_time]
+      meaning: Reconstructable even when storage or assessment fails; unavailable checks are explicitly identified rather than fabricated.
+  representations:
+    unknowns: Use explicit tagged unknown/manual-review/removed values, not a missing field interpreted as no constraint.
+    units: Use exact decimal arithmetic for catalog values and sums; enforce half-unit increments only where requirements explicitly require them.
+    temporal_values: Store institution-local dates/times plus timezone and disambiguating offsets when required; derive dated instants for comparisons.
+    identities: Preserve stable identifiers separately from display names and codes; equivalences are direct declared canonical mappings.
+    diagnostics: Each carries a category, code, affected identities, text explanation, evidence, and an action target without prescribing an automatic remedy.
+
+domain_policies:
+  plan_edits:
+    owner: CAN-003
+    requirements: [FR-06, FR-07, FR-08, FR-09, FR-11, FR-12, FR-13, FR-19, FR-21]
+    rules:
+      - Plan and target names trim surrounding whitespace and contain 1-80 characters; target names are case-insensitively unique within a plan.
+      - PlanRepository alone enforces case-insensitive plan-name uniqueness within a quarter against the durable collection.
+      - Before accepting a create/rename name into the working plan, the session asks PlanRepository to check its availability; duplicate-name rejection leaves the prior accepted plan unchanged.
+      - Commit rechecks name uniqueness atomically. If another tab wins after the check, retain the proposed name in the errored form, restore the prior accepted name through QuarterPlan, preserve unrelated edits, and reassess the corrected generation before retrying.
+      - Add-course with an already selected canonical identity returns focus-existing and changes no count, credit, or save generation.
+      - An explicit incompatible component addition is rejected; lecture replacement retains incompatible old components as unresolved draft choices.
+      - Course removal captures the complete selection as an immutable memento; the session invalidates it at the next accepted plan edit or plan close.
+      - Undo restores the memento through the same domain transition and recomputes results; it never undoes another tab's durable revision implicitly.
+      - Variable units must be among catalog-permitted values; no default value is invented.
+      - Unit target is initially absent; when present, 0 <= minimum <= maximum <= 60 in increments of 0.5.
+      - Coursework status is completed, in_progress, or not_completed; earned units are unknown or nonnegative half-unit amounts no greater than 30.
+      - A duplicate canonical history entry requests editing the existing record; unmapped entered identities remain visible.
+      - Academic targets require a unique valid name, nonempty known eligible set at creation, and a positive integer count or positive half-unit threshold.
+      - PlannerView displays the independent-credit-reuse explanation in the target editor before target submission; this is disclosure, not an additional consent gate.
+      - A count target larger than its distinct eligible set is saved with a discrepancy warning, not rejected.
+      - Clearing the unit target preserves selected units and saves the absent-target state.
+  search:
+    owner: CAN-004
+    requirements: [FR-04]
+    expression: >-
+      subject_matches(course) AND EXISTS section IN offered_sections(course, selected_quarter)
+      WHERE availability_matches(section) AND
+      (query_is_empty OR substring(query, course.code) OR substring(query, course.title)
+      OR substring(query, section.instructors)).
+    normalization: Trim query; use case-insensitive substring matching. Unset filters impose no restriction.
+    ordering: Course code followed by stable course identity.
+    empty_result: No courses found; clear-filters action preserves the selected quarter and plan.
+  schedule:
+    owners: {temporal_meaning: "CAN-007", conflict_and_completeness: "CAN-008"}
+    requirements: [FR-14, FR-15, FR-17, FR-18, "section 4.3"]
+    overlap: start_a < end_b AND start_b < end_a on fully dated half-open intervals.
+    inclusion: All active required class components and supplied exams versus each other and personal unavailable occurrences, including within-course pairs.
+    exclusion: Personal-personal pairs and canceled/removed section occurrences.
+    completeness: Missing/incompatible/canceled/removed required components, TBA meetings, and unknown exam information remain explicit incomplete reasons; full/waitlisted/unknown availability alone does not.
+    recurrence: Weekday matches on inclusive occurrence-start dates; cancellations suppress originals and explicit replacements supply their own validated dates.
+    pair_identity: Ordered pair of stable occurrence identities; no duplicate conflicts from examining both directions.
+    output: Group repeated pairs only with all affected dates and exact overlap intervals still inspectable.
+  academic:
+    owner: CAN-009
+    requirements: [FR-10, FR-20, FR-22, FR-23, "section 4.4"]
+    history_truth:
+      completed: true
+      in_progress: false
+      not_completed: false
+      missing_with_complete_history: false
+      missing_with_incomplete_history: unknown
+      unmapped_or_removed_identity: unknown
+    expressions:
+      none: true
+      unknown_or_unsupported: unknown with source text and manual-review explanation
+      all_of: false if any operand is false; otherwise unknown if any is unknown; otherwise true
+      any_of: true if any operand is true; otherwise unknown if any is unknown; otherwise false
+      empty_expression: Invalid catalog input, never an evaluator default.
+    prerequisite_result: Evaluate against completed work only; true becomes met, false unmet, unknown unverified.
+    corequisite_result: >-
+      First evaluate completed work alone. If true, report met. Otherwise add concurrently selected
+      courses whose bundles are complete, existing, and uncanceled. If this evaluation is true,
+      report projected; otherwise report its unmet/unverified result. Preserve all branch explanations.
+    selected_units:
+      count: Each effective canonical selected course once, including incomplete drafts and full/waitlisted choices.
+      exclude: Entire course if any selected component is canceled or removed, with the exclusion explained.
+      unresolved: Unchosen/invalid units make the known subtotal incomplete; never classify it below/within/above a range.
+      no_target: Show total plus No unit target specified.
+    target_contribution:
+      completed: Canonical completed eligible coursework; use earned units for unit targets and one course for count targets.
+      projected: Add only eligible selected courses with complete existing uncanceled bundles that were not already counted as completed.
+      unresolved_units: Still count a complete course in count targets; omit its unknown unit contribution and retain uncertainty for unit targets.
+      retake: Completed contribution wins even when its earned units are unknown; the plan cannot substitute new units to fabricate additional credit.
+      reuse: Each target is independent; the same course can contribute once within each of several targets.
+      external_in_progress: No projected contribution unless selected in this quarter plan and otherwise eligible.
+      remaining: max(0, threshold - known_contribution), separately for completed and projected work.
+      status_order:
+        - met_by_completed_work when known completed contribution reaches threshold
+        - would_be_met_if_planned_completed when known projected contribution reaches threshold
+        - unverified when history is incomplete, any history is unmapped/removed, or relevant unknown units can affect the result
+        - not_met otherwise
+      explanation: Show contributors, excluded choices and reasons, unresolved facts, provisional remaining values, and retained conflict/availability warnings.
+  catalog_adoption:
+    owners: {preview: "CAN-006", intent_preservation: "CAN-003", receipt: "CAN-011"}
+    requirements: [FR-27, QR-06]
+    rules:
+      - Compare old and new interpretations against all selections, history, and target memberships before asking for adoption.
+      - Keep-old preserves the exact version and shows older-version/age notices; it never modifies the saved inputs.
+      - Apply-new requires a still-current review token, then creates a new working generation with the new pinned version.
+      - Preserve removed course/section details and target/history identities as unresolved entries; no replacement is chosen automatically.
+      - Changed allowed-unit values retain the old student value as invalid until explicitly corrected.
+      - Canceled/removed sections have no active occurrences, exclude their course from selected units, and invalidate its projected contribution.
+      - New equivalences group colliding selections under one effective canonical identity while preserving the original choices as unresolved alternatives.
+      - An equivalence collision is counted at most once; a conflicting component or unit choice stays unresolved until the student edits it.
+      - History collisions preserve all raw original records inside one effective canonical group. Identical status/earned-unit evidence may agree; disagreeing values remain unknown until the student explicitly resolves that group.
+      - An unresolved history collision contributes no inferred completion or units, triggers applicable unverified checks, and never silently chooses the most favorable record.
+      - Assessment and subsequent save use the new version together; save failure preserves the old durable version and the new in-session draft.
+
+contracts:
+  CTR-001:
+    name: Accept and publish catalog
+    clients: [ACT-002, CAN-006]
+    provider: CAN-005
+    responsibility: RSP-015
+    preconditions: Client supplies a complete raw document; only ACT-002's maintainer composition has publication authority.
+    provider_obligations:
+      - Enforce required/unknown-allowed fields, identities, references, rule structure, component linkages, valid units, temporal bounds, and catalog capacity.
+      - Delegate temporal validity to CAN-007; emit field paths and record identities for every detected violation.
+      - Return an immutable snapshot on acceptance; when publishing, activate it only after complete immutable content is available.
+    failure: Invalid data, failed staging, or definite activation rejection leaves the prior active manifest unchanged. Lost activation acknowledgment is indeterminate until CAN-005 reads back the active reference.
+    uncertain_activation: If the new reference is active, report its successful receipt; if the old reference remains active, report failure. If neither outcome can be verified, retain an indeterminate outcome and retry verification without publishing a substitute version.
+    aftereffects: Validation alone is pure. A successful publication receipt identifies quarter, version, digest, and active manifest revision.
+    concurrency: Publication uses expected manifest revision; a competing publisher must re-read before retry, never overwrite silently.
+    verification: [AT-08, T-001]
+  CTR-002:
+    name: Load catalog with retained fallback
+    client: CAN-002
+    provider: CAN-006
+    responsibility: RSP-018
+    preconditions: Request a quarter or exact version; client does not transmit PlanInputs.
+    postconditions: Return validated requested content and source/age/latest-known state, or an unavailable result with retry.
+    failure: Failed remote fetch uses a retained applicable version when present; exact-version requests never silently return a different version.
+    cancellation: Cancel obsolete quarter fetches; a late result can populate retention but cannot select a quarter or overwrite the session.
+    deadline: Apply DEC-008's bounded adapter read deadline; timeout takes the same retained-fallback/unavailable path as transport failure. A new retry cancels a superseded in-flight attempt.
+    retention: A cache-write failure preserves the usable in-memory result and explicitly reports that retention has failed.
+    verification: [FR-01, FR-02, QR-07, T-002]
+  CTR-003:
+    name: Apply plan edit
+    client: CAN-002
+    provider: CAN-003
+    responsibility: RSP-009
+    preconditions: Intent is tied to the active PlanId, fixed quarter, and exact pinned catalog.
+    postconditions: Return new immutable PlanInputs and changed identities, or a no-op focus-existing result, or field-specific rejection.
+    failure: Invalid input and capacity failures preserve the entire previous plan value.
+    aftereffects: No storage, rendering, enrollment, or network effects; successful removal may return a complete memento.
+    verification: [AT-02, AT-03, AT-08, T-003]
+  CTR-004:
+    name: Interpret dated intervals
+    clients: [CAN-003, CAN-005, CAN-008]
+    provider: CAN-007
+    responsibility: RSP-021
+    preconditions: Caller supplies quarter metadata and a complete temporal definition.
+    postconditions: Validated times and expansions have stable source IDs, exact dates, institution-local display values, and comparison instants.
+    failure: Reject nonexistent local times, ambiguity without offset, end not after start, and occurrences outside the instruction/exam span.
+    aftereffects: None; caller owns error presentation or catalog rejection.
+    verification: [AT-02, AT-07, T-004]
+  CTR-005:
+    name: Assess one immutable draft
+    client: CAN-002
+    provider: CAN-010
+    responsibility: RSP-028
+    preconditions: AssessmentKey matches immutable PlanInputs and CatalogSnapshot.
+    postconditions: Return all separate category reports with the same key and traceable evidence.
+    failure: An evaluator error returns AssessmentFailed, not a partial success; the draft remains downloadable with failed checks labeled unavailable.
+    ordering: The session accepts the result only while its full key equals the active key; late results are discarded.
+    aftereffects: Read-only evaluation; no changes to student intent, catalog, or persistence.
+    verification: [AT-01, AT-04, AT-05, T-005]
+  CTR-006:
+    name: Commit a complete private revision
+    client: CAN-002
+    provider: CAN-011
+    responsibility: RSP-031
+    preconditions: PlanInputs came from CAN-003; request includes expected durable revision, unique MutationId, content fingerprint, and accepted catalog envelope.
+    atomic_region:
+      - Read current plan/deletion state, quarter-name index, active plan count, and required catalog envelope.
+      - Recognize the same completed MutationId with the same fingerprint before repeating an effect; reject changed-content reuse.
+      - Check expected revision, create-versus-replace semantics, unique name, capacity, and immutable catalog identity within this transaction.
+      - Write the complete new plan, name index, required catalog envelope, and last mutation receipt together.
+      - Signal success only after physical transaction completion.
+    postconditions: Return SaveReceipt identifying exactly the persisted inputs; all other plans remain unchanged.
+    failures: [revision_conflict, deleted_plan, duplicate_name, plan_capacity, storage_denied, storage_full, storage_corrupt, interrupted_or_indeterminate]
+    failure_effect: Definite abort preserves prior records; indeterminate completion is reconciled by receipt/read before a retry.
+    retry: The same request keeps its MutationId and fingerprint. A newer remote-tab revision cannot be bypassed by generating another ID.
+    receipt_retention: >-
+      Keep the last receipt in each plan or deletion marker. If a newer operation supersedes the
+      receipt before an uncertain attempt is reconciled, return conflict/indeterminate with current
+      revision; do not infer failure and recreate or overwrite the operation. No unbounded event log is needed.
+    timing: Current accepted edits receive saved acknowledgment within 2 seconds under the requirements' reference conditions.
+    verification: [AT-06, QR-06, T-006, T-007]
+  CTR-007:
+    name: Delete and duplicate alternatives
+    client: CAN-002
+    provider: CAN-011
+    responsibility: RSP-032
+    duplicate: Freeze current accepted inputs including unsaved input, generate a new PlanId, require a new valid unique name, and create through CTR-006.
+    delete: Require confirmation of displayed name and current expected revision; atomically remove the active record/name and retain a deletion marker.
+    failure: A competing revision invalidates deletion confirmation; capacity/name/storage failures leave the source and current draft intact.
+    aftereffects: Duplicate has no mutable references into the source. Deleted identity cannot be resurrected by an old tab's save.
+    verification: [FR-25, AT-06, T-007]
+  CTR-008:
+    name: Review and adopt catalog
+    client: CAN-002
+    providers: [CAN-006, CAN-003]
+    responsibilities: [RSP-020, RSP-011]
+    preconditions: Old and new snapshots are accepted; review token identifies current generation and both exact versions.
+    postconditions: Keep retains old inputs; apply returns one complete new draft with preserved choices and explicit invalidations.
+    failure: Changed draft or changed proposed catalog invalidates the token and requires a new preview, without altering either plan version.
+    aftereffects: Assessment and save follow the normal generation pipeline; no automatic selection, dropping, or background adoption.
+    verification: [AT-07, T-008]
+  CTR-009:
+    name: Reconstructable text download
+    client: CAN-002
+    provider: CAN-013
+    responsibility: RSP-036
+    preconditions: Student requested download; session froze inputs and either matching results or explicit current-generation pending/failed check information.
+    postconditions: All fields listed in FR-29 are represented in UTF-8 text, including absent targets, raw unresolved identities, recurrence exceptions, and save state at capture.
+    failure: Report download failure and retain the draft and recovery choices; never navigate away because export was attempted.
+    aftereffects: A local user-requested file, no implicit save, upload, import, or enrollment.
+    verification: [FR-29, AT-06, T-009]
+  CTR-010:
+    name: Physical profile transaction
+    clients: [CAN-011, CAN-006]
+    provider: CAN-012
+    responsibility: RSP-034
+    preconditions: Only injected capabilities can access declared stores; transaction operations do no network, rendering, or user interaction.
+    postconditions: Competing read-modify-write operations serialize and observers see one complete committed state.
+    failure: Reject/abort with a typed platform error; never clear the storage database as automatic recovery.
+    restore: Check envelope/schema integrity before handing records to domain reconstruction; preserve incompatible records and offer a clear read failure.
+    verification: [QR-05, QR-06, T-006, T-007]
+
+control_centers:
+  CTL-001:
+    owner: CAN-002
+    style: delegated
+    initiation: Student edit, open, switch, retry, conflict choice, or catalog choice.
+    rule: Session decides sequence and tracks outcomes; plan, catalog, evaluators, and repository decide their own policies.
+    alternative_rejected: A central controller inspecting raw records would duplicate bundle, academic, time, and concurrency policy.
+  CTL-002:
+    owner: CAN-010
+    style: delegated
+    initiation: Assessment request for an immutable generation.
+    rule: Obtain selection facts once, request two independent judgments, and join by key; publish only a complete result.
+    alternative_rejected: Uncoordinated per-widget evaluation would mix revisions and produce inconsistent explanations.
+  CTL-003:
+    owner: CAN-011
+    style: centralized_within_transaction
+    initiation: Create, replace, duplicate, or delete a private alternative.
+    rule: Keep coupled revision, name, count, and receipt decisions in one atomic region while storage owns physical commit mechanics.
+    alternative_rejected: Independent prechecks followed by a write would race across tabs.
+  CTL-004:
+    owner: CAN-005
+    style: delegated_with_atomic_activation
+    initiation: Maintainer supplies a catalog for publication.
+    rule: Validate and stage before atomically activating a version; the public distribution adapter owns physical activation mechanics.
+    alternative_rejected: Incremental edits to the active catalog expose mixed versions and invalidate saved interpretations.
+
+session_state_machines:
+  working_input:
+    initial: no_plan
+    transitions:
+      - {event: "open_or_create", from: "no_plan", to: "editing", effect: "Pin exact catalog and establish base revision."}
+      - {event: "accepted_edit", from: "editing", to: "editing", effect: "Advance working generation; request assessment and save; expire previous undo unless this is its removal event."}
+      - {event: "rejected_edit", from: "editing", to: "editing", effect: "Keep generation and inputs; expose rejection without losing field text."}
+      - {event: "permitted_close", from: "editing", to: "no_plan", effect: "Invalidate request generation and removal undo; release active references."}
+  assessment:
+    states: [pending, complete, failed]
+    transitions:
+      - {event: "accepted_generation", to: "pending", effect: "Replace current check numbers with pending indicators; retain current editable inputs."}
+      - {event: "matching_complete_result", to: "complete", effect: "Publish all categories, grid, and chronological data together."}
+      - {event: "matching_failure", to: "failed", effect: "Show unavailable checks; preserve input and allow retry/download."}
+      - {event: "stale_result", to: "unchanged", effect: "Discard without changing current view."}
+  persistence:
+    states: [unsaved, saving, saved, save_failed, revision_conflict, reconciling]
+    transitions:
+      - {event: "accepted_generation_with_resolved_base", to: "saving", effect: "Queue complete inputs with current base; serialize saves within this tab."}
+      - {event: "accepted_generation_while_conflicted_or_reconciling", to: "unchanged", effect: "Update working input and assessment only; retain disputed base and block writes pending explicit recovery or receipt reconciliation."}
+      - {event: "receipt_for_exact_current_generation_and_fingerprint_with_no_older_queued_write", to: "saved", effect: "Advance durable base and acknowledge the current inputs only after all earlier writes have completed."}
+      - {event: "receipt_for_older_queued_generation", to: "saving", effect: "Advance base for the next queued save; do not label current input saved."}
+      - {event: "definite_storage_failure", to: "save_failed", effect: "Retain working input and expose retry/download."}
+      - {event: "uncertain_commit", to: "reconciling", effect: "Read receipt/current revision before any replay or discard."}
+      - {event: "conflicting_or_deleted_base", to: "revision_conflict", effect: "Suspend writes; offer explicit recovery without automatic merge."}
+    save_queue: >-
+      Only one write per plan per tab is in flight. Each accepted edit is captured; successive
+      receipts advance the base for later queued writes. A conflict or failure pauses the queue.
+      Retry preserves the latest working input and reconciles any uncertain earlier write first.
+      MutationId is mapped to originating session and exact working generation. A receipt for an
+      older equal-content generation advances its known base but never acknowledges the current
+      generation. On reopen, a complete durable receipt establishes the loaded baseline before new
+      session generations begin. No queued older write can remain after current-generation acknowledgment.
+    navigation_guard: >-
+      While saving/reconciling, do not silently discard or race an in-flight write; allow waiting
+      or recovery download. Once the outcome is known, unsaved/failed/conflicting input requires
+      explicit retry or discard before switch/close/delete. A discard stops queued writes and leaves
+      the last known durable revision intact. Browser/device termination cannot guarantee unsaved recovery.
+
+collaboration_stories:
+  COL-001:
+    scenario: Select a quarter, find an offering, and inspect all commitments.
+    requirements: [FR-01, FR-02, FR-04, FR-05, QR-07]
+    preconditions: Browser composition is ready; no quarter is selected.
+    steps:
+      - {from: "ACT-001", to: "CAN-001", request: "Choose a quarter", responsibility: "RSP-002"}
+      - {from: "CAN-001", to: "CAN-002", request: "Open selected-quarter planning context", responsibility: "RSP-004"}
+      - {from: "CAN-002", to: "CAN-006", request: "Discover and load the selected snapshot", responsibility: "RSP-018"}
+      - {from: "CAN-006", to: "CAN-005", request: "Admit fetched catalog as immutable knowledge", responsibility: "RSP-015"}
+      - {from: "CAN-006", to: "CAN-012", request: "Retain accepted catalog for future fallback", responsibility: "RSP-034"}
+      - {from: "CAN-002", to: "CAN-004", request: "Search or inspect through the returned exact snapshot", responsibility: "RSP-014"}
+      - {from: "CAN-002", to: "CAN-001", request: "Publish results with provenance and complete details", responsibility: "RSP-001"}
+    reachability: Snapshot returned by CatalogLibrary is a public CatalogKnowledge capability retained by the session for this context.
+    alternatives: Empty manifest shows the unavailable message and retry; failed retrieval uses an applicable retained version; empty search offers clear filters.
+    completion: Student sees correct selected-quarter offerings, all required components, explicit unknowns, and source/version/age.
+    acceptance: [AT-01, AT-04, AT-08, T-002]
+  COL-002:
+    scenario: Edit a course bundle, unavailable time, or academic input and see coherent checks.
+    requirements: [FR-06, FR-07, FR-08, FR-09, FR-10, FR-11, FR-12, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23]
+    preconditions: An editable plan and its exact catalog exist; view is subscribed to the session.
+    steps:
+      - {from: "CAN-001", to: "CAN-002", request: "Submit an intention with current plan identity", responsibility: "RSP-004"}
+      - {from: "CAN-002", to: "CAN-003", request: "Apply intention using pinned catalog", responsibility: "RSP-009"}
+      - {from: "CAN-003", to: "CAN-004", request: "Interpret affected identities and bundle relationships", responsibility: "RSP-013"}
+      - {from: "CAN-003", to: "CAN-007", request: "Validate temporal input when an interval is edited", responsibility: "RSP-021"}
+      - {from: "CAN-002", to: "CAN-010", request: "Assess the accepted generation", responsibility: "RSP-028"}
+      - {from: "CAN-010", to: "CAN-004", request: "Supply one SelectionFacts envelope", responsibility: "RSP-013"}
+      - {from: "CAN-010", to: "CAN-008", request: "Explain temporal feasibility", responsibility: "RSP-023"}
+      - {from: "CAN-010", to: "CAN-009", request: "Explain academic evidence and selected units", responsibility: "RSP-025"}
+      - {from: "CAN-002", to: "CAN-001", request: "Publish only the matching complete assessment", responsibility: "RSP-001"}
+    side_branch: Session starts COL-003 for the accepted inputs without waiting for derived results; persistence stores inputs rather than judgments.
+    alternatives: Invalid input returns its reason with prior plan preserved; duplicate selection focuses existing course; old results cannot replace a newer generation.
+    completion: Grid, list, diagnostics, unit load, and academic results describe the same current revision, including unresolved work.
+    acceptance: [AT-01, AT-02, AT-03, AT-04, AT-05, AT-08, T-003, T-004, T-005]
+  COL-003:
+    scenario: Save an edit and reopen its complete acknowledged inputs.
+    requirements: [FR-24, QR-05, QR-06]
+    preconditions: Session holds a valid accepted draft and its durable base revision or create intent.
+    steps:
+      - {from: "CAN-002", to: "CAN-011", request: "Commit immutable inputs with expected revision and stable mutation identity", responsibility: "RSP-031"}
+      - {from: "CAN-011", to: "CAN-012", request: "Atomically check and write the complete revision with receipt and catalog", responsibility: "RSP-034"}
+      - {from: "CAN-002", to: "CAN-001", request: "Show saved only for a matching current-generation receipt", responsibility: "RSP-001"}
+      - {from: "CAN-002", to: "CAN-011", request: "Reopen the saved alternative", responsibility: "RSP-030"}
+      - {from: "CAN-011", to: "CAN-003", request: "Reconstitute all acknowledged inputs under the pinned context", responsibility: "RSP-010"}
+      - {from: "CAN-002", to: "CAN-006", request: "Obtain that exact retained catalog", responsibility: "RSP-018"}
+      - {from: "CAN-002", to: "CAN-010", request: "Recompute rather than trust stale saved check results", responsibility: "RSP-028"}
+    alternatives: Denial/quota/abort enters COL-004; competing revision enters COL-005; incompatible stored envelope is preserved and reported rather than erased.
+    completion: Reopened plan restores all input and pinned context; derived categories are complete before the open-performance timer stops.
+    acceptance: [AT-01, AT-06, T-006]
+  COL-004:
+    scenario: Recover from a failed or uncertain save without losing the working draft.
+    requirements: [FR-26, FR-29, QR-06]
+    preconditions: A working generation exists and a commit has failed or its result is uncertain.
+    steps:
+      - {from: "CAN-002", to: "CAN-011", request: "Resolve uncertain receipt before any replay", responsibility: "RSP-033"}
+      - {from: "CAN-002", to: "CAN-001", request: "Show unsaved state and applicable recovery choices", responsibility: "RSP-001"}
+      - {from: "CAN-001", to: "CAN-002", request: "Retry or download current inputs by explicit student choice", responsibility: "RSP-007"}
+      - {from: "CAN-002", to: "CAN-013", request: "Download a frozen current draft even when checks are pending or failed", responsibility: "RSP-036"}
+      - {from: "CAN-013", to: "EXT-002", request: "Deliver a local UTF-8 file", contract: "CTR-009"}
+    alternatives: Retry failure keeps the same recovery state; download failure preserves inputs and choices; discard is explicit and resolves/stops outstanding writes first.
+    completion: Student either receives a durable current-generation receipt or retains understandable unsaved inputs with a usable recovery action.
+    acceptance: [AT-06, T-006, T-009]
+  COL-005:
+    scenario: Two tabs edit, rename, create, or delete the same private collection.
+    requirements: [FR-25, FR-28, QR-06]
+    preconditions: Distinct sessions hold snapshots of a shared browser-profile store.
+    steps:
+      - {from: "CAN-002", to: "CAN-011", request: "Commit or delete against the observed durable revision", responsibility: "RSP-031"}
+      - {from: "CAN-011", to: "CAN-012", request: "Serialize revision/name/count decisions with the corresponding write", responsibility: "RSP-034"}
+      - {from: "CAN-002", to: "CAN-001", request: "Explain competing revision or deleted identity without discarding input", responsibility: "RSP-001"}
+      - {from: "CAN-001", to: "CAN-002", request: "Choose load-newer with discard confirmation or separate-copy or download", responsibility: "RSP-005"}
+      - {from: "CAN-002", to: "CAN-011", request: "Reopen newer revision or save an independent new identity", responsibility: "RSP-032"}
+    alternatives: At 20 saved plans the copy is rejected but download remains; a fresh name collision requests another name; stale deletion needs renewed named confirmation.
+    completion: No accepted operation silently overwrites another tab's changes, exceeds capacity, duplicates a name, or resurrects a deleted plan.
+    acceptance: [AT-06, AT-08, T-007]
+  COL-006:
+    scenario: Review a changed catalog and retain or adopt it.
+    requirements: [FR-18, FR-27, QR-06]
+    preconditions: A plan is pinned to an older catalog and a new accepted snapshot is available.
+    steps:
+      - {from: "CAN-002", to: "CAN-006", request: "Compare the draft against both exact versions", responsibility: "RSP-020"}
+      - {from: "CAN-006", to: "CAN-004", request: "Interpret corresponding facts from each immutable snapshot", responsibility: "RSP-013"}
+      - {from: "CAN-002", to: "CAN-001", request: "Present changes before any adoption", responsibility: "RSP-001"}
+      - {from: "CAN-001", to: "CAN-002", request: "Keep current version or explicitly apply reviewed version", responsibility: "RSP-005"}
+      - {from: "CAN-002", to: "CAN-003", request: "Preserve choices while applying a still-current adoption token", responsibility: "RSP-011"}
+      - {from: "CAN-002", to: "CAN-010", request: "Reassess the new generation and exact new catalog", responsibility: "RSP-028"}
+      - {from: "CAN-002", to: "CAN-011", request: "Save new inputs and catalog pin atomically", responsibility: "RSP-031"}
+    alternatives: Edits after preview invalidate the token; keeping old leaves it intact; storage failure leaves the adopted draft recoverable and the prior durable version complete.
+    completion: Removed/canceled choices and invalid units remain visible, stale occurrences disappear, and no replacement or extra credit is invented.
+    acceptance: [AT-07, T-008]
+  COL-007:
+    scenario: Publish a catalog as an authorized maintainer.
+    requirements: [FR-03, "section 4.2"]
+    preconditions: Maintainer has a raw document and a publication adapter for public catalog content only.
+    steps:
+      - {from: "ACT-002", to: "CAN-005", request: "Validate and publish the supplied complete document", responsibility: "RSP-017"}
+      - {from: "CAN-005", to: "CAN-007", request: "Validate every timed occurrence and quarter bound", responsibility: "RSP-021"}
+      - {from: "CAN-005", to: "CAN-004", request: "Construct accepted catalog knowledge", responsibility: "RSP-012"}
+      - {from: "CAN-005", to: "EXT-001", request: "Stage immutable content and atomically activate its manifest reference", contract: "CTR-001"}
+    alternatives: Invalid data returns record paths; failed staging leaves no active change; activation conflict reports the current manifest and requires deliberate retry.
+    completion: One complete new version is active and identifiable, or the prior active version remains usable.
+    acceptance: [AT-08, T-001]
+  COL-008:
+    scenario: Duplicate, remove, undo, or switch alternatives through accessible interactions.
+    requirements: [FR-12, FR-13, FR-25, QR-03, QR-04]
+    preconditions: Student is editing a plan using keyboard or assistive technology.
+    steps:
+      - {from: "CAN-001", to: "CAN-002", request: "Perform a named plan or selection action", responsibility: "RSP-004"}
+      - {from: "CAN-002", to: "CAN-003", request: "Remove/restore a selection or produce independent copy inputs as appropriate", responsibility: "RSP-010"}
+      - {from: "CAN-002", to: "CAN-011", request: "Persist copy or confirmed deletion or open another plan", responsibility: "RSP-032"}
+      - {from: "CAN-002", to: "CAN-001", request: "Publish outcome with logical focus and diagnostic announcements", responsibility: "RSP-001"}
+    alternatives: Unsaved-navigation guard precedes switching/deleting; cancel confirmation is a no-op; undo expires after next accepted edit or close.
+    completion: Unrelated plans/selections remain unchanged and all recovery controls work through the same accessible interaction path.
+    acceptance: [AT-02, AT-06, AT-08, T-010]
+
+trust_and_failure_policies:
+  boundaries:
+    - source: Student-entered values
+      destination: CAN-003
+      trust: Untrusted syntax and unverified academic evidence.
+      validator: CAN-003 for local invariants, CAN-007 for time, CAN-011 for transactional collection constraints.
+      protection: View translates controls without recreating semantic validators; errors return to the field while prior domain input survives.
+    - source: Public catalog or maintainer import
+      destination: CAN-005
+      trust: Untrusted representation, even when supplied by an authorized maintainer.
+      validator: CAN-005 delegates temporal checks to CAN-007 and is the only catalog semantic admission authority.
+      protection: Explicit unknown values, rejected malformed records, immutable accepted content, and text-only treatment of source strings.
+    - source: Private state
+      destination: Browser storage and local download
+      trust: Storage can be denied, exhausted, or interrupted; same-profile users share access.
+      validator: CAN-012 protects envelope/physical integrity; CAN-011 arbitrates durable revisions.
+      protection: No network serialization of plans, no third-party analytics, no private data in public catalog payloads, no automatic destructive recovery.
+    - source: Maintainer publication capability
+      destination: EXT-001
+      trust: Maintainer authority is supplied by the chosen deployment, not by a student UI role.
+      validator: Publication adapter checks its authority and expected active-manifest revision.
+      protection: Browser composition contains read access only; missing publication authority fails without creating or granting credentials.
+  failures:
+    POL-001:
+      condition: Invalid student edit or capacity limit
+      detector: CAN-003 or CAN-011 according to ownership
+      handler: CAN-002
+      actor_notification: CAN-001 exposes reason and offending field/identity.
+      final_state: Prior inputs remain; editable form text can be corrected; no automatic partial mutation.
+    POL-002:
+      condition: Catalog retrieval fails or returns invalid content
+      detector: CAN-006 with CAN-005
+      handler: CAN-006
+      recovery: Use applicable retained version and visible age, or unavailable state with explicit retry.
+      failed_recovery: Preserve any current draft/catalog; do not substitute demonstration or unrelated-quarter data.
+    POL-003:
+      condition: Save denied, exhausted, interrupted, or conflicting
+      detector: CAN-012 or CAN-011
+      handler: CAN-002
+      recovery: Follow CTR-006 receipt reconciliation and explicit retry/copy/load/download choices.
+      failed_recovery: Keep current inputs and Changes not saved; no saved signal, implicit clearing, or forced navigation.
+    POL-004:
+      condition: Assessment fails or arrives out of order
+      detector: CAN-010 or CAN-002 key comparison
+      handler: CAN-002
+      recovery: Ignore stale results; expose current failure and allow reassessment while retaining input.
+      failed_recovery: Checks remain unavailable; export contains inputs and explicit pending/failed check state.
+    POL-005:
+      condition: Publication staging, activation, or outcome reporting fails
+      detector: CAN-005 and EXT-001 adapter
+      handler: CAN-005
+      recovery: Re-read active manifest to distinguish committed activation from failure before retrying the same version.
+      failed_recovery: Report indeterminate publication and do not activate a second substitute version; operator retries verification.
+      cleanup: Unreferenced staged artifacts may be removed after active-manifest verification; active/referenced versions are never removed by cleanup.
+    POL-006:
+      condition: Catalog update invalidates selections or preview becomes stale
+      detector: CAN-006 and CAN-003
+      handler: CAN-002
+      recovery: Re-preview changed inputs or retain invalidated identities in the adopted draft for manual resolution.
+      failed_recovery: Keep prior complete durable version and current recoverable draft; no silent substitution.
+    POL-007:
+      condition: Download fails during recovery
+      detector: CAN-013
+      handler: CAN-002
+      recovery: Release temporary download resources, report failure, and leave retry/save/download available.
+      failed_recovery: Working input remains in memory; do not promise recovery after the failed session is closed.
+    POL-008:
+      condition: Stored envelope is corrupt or from an unsupported schema
+      detector: CAN-012
+      handler: CAN-011 recasts read failure and CAN-002 presents it
+      recovery: Preserve records, open unaffected plans when possible, and request correction through an explicit future recovery procedure.
+      failed_recovery: Never silently erase or migrate unreadable personal data; no guaranteed restoration of externally corrupted data is claimed.
+
+realization:
+  status: Selected design; implementation and runtime verification have not been performed.
+  deployment:
+    browser: One client application performs all student planning and persists private state in its browser profile.
+    public_catalog: Static immutable catalog documents plus a small active-version manifest; no private planning endpoint.
+    maintainer: A separate command-line publication tool reuses catalog admission rules and has an explicitly supplied publication capability.
+  mapping:
+    IMP-001:
+      participants: [CAN-001, CAN-002, CAN-013]
+      realization: Browser presentation modules, an explicit session state machine, and a local text-download module.
+      reason: User-visible workflow and recovery remain inspectable while domain policies stay outside UI components.
+      conformance: [T-005, T-009, T-010]
+    IMP-002:
+      participants: [CAN-003, CAN-004, CAN-007, CAN-008, CAN-009, CAN-010]
+      realization: Typed immutable values with cohesive domain/evaluator modules and injected capabilities; no mandatory one-class-per-role mapping.
+      reason: Pure evaluations and explicit inputs support repeatability, separate ownership, and isolated rule tests.
+      conformance: [T-003, T-004, T-005, T-011]
+    IMP-003:
+      participants: [CAN-005, CAN-006]
+      realization: Shared catalog document decoder/validator, browser catalog access module, and maintainer publication command.
+      reason: Import and retrieval use the same semantic admission contract without exposing publication authority to students.
+      conformance: [T-001, T-002, T-008]
+    IMP-004:
+      participants: [CAN-011, CAN-012]
+      realization: Repository over a transactional browser store, with an IndexedDB adapter as the selected initial realization.
+      reason: Coupled name/capacity/revision checks and plan/catalog/receipt writes require atomic read-modify-write behavior across tabs.
+      stores: [plan_records, quarter_name_index, catalog_envelopes, deletion_markers]
+      transaction_scope: Mutating plan transactions include every affected store; revision checks and writes are inside one transaction.
+      conformance: [T-006, T-007]
+      constraint: The adapter must pass the contract probes in both supported browser families; an API name alone is not evidence of correctness.
+  module_rules:
+    - Composition roots may assemble components but own no domain judgments.
+    - UI modules cannot read or write browser storage directly.
+    - Domain and assessment modules cannot call network, storage, DOM, or download APIs.
+    - Catalog admission and institution-calendar modules are shared by browser and maintainer realizations.
+    - Framework, language, build tool, and timezone library selection remain implementation details constrained by these contracts.
+  persistence_layout:
+    plan_record: Complete PlanInputs, schema_version, committed_revision, and last SaveReceipt in one envelope.
+    name_index: Normalized quarter/name to active PlanId; changes commit with the corresponding plan.
+    catalog_envelope: Exact accepted public content and CatalogRef; required bytes retained in the same commit as a newly pinned plan.
+    deletion_marker: Deleted PlanId, terminal revision, and last deletion receipt; excluded from active count and listing.
+    derived_state: Never required for recovery; discard and recompute any optional indexes after loading canonical inputs.
+    retention: Do not automatically delete pinned or last-usable catalogs. No background history/event-log feature is introduced.
+  catalog_exchange:
+    format: UTF-8 JSON document with schema_version, source metadata, quarter, canonical courses, aliases, offerings, and temporal definitions.
+    mandatory_content: Exactly the usable and explicit-unknown distinctions in requirements.md section 4.2.
+    course_units: fixed decimal or nonempty collection of selectable decimals; no implicit variable-unit choice.
+    academic_rules: Tagged none, unknown, manual_review(source_text), completed_course(course_id), all_of(nonempty_children), or any_of(nonempty_children).
+    temporal_definitions: Tagged asynchronous, TBA, dated interval, or bounded weekly recurrence with cancellations/replacements; exams use supplied/none/unknown.
+    identifiers: Aliases point directly to existing canonical identities; unknown references, duplicate identities, and contradictory identity declarations are rejected.
+    maintainer_procedure:
+      - Supply one complete document and a target public distribution; no institutional scraping or transcript connection is assumed.
+      - Run acceptance to obtain all record/field validation errors; correct the input without changing the active version.
+      - Stage accepted immutable content, verify its identity, then atomically update the manifest with the expected prior revision.
+      - Read back the active reference and report version/digest; on an uncertain outcome verify before retry or cleanup.
+    representation_detail: Wire field names and a machine schema must be generated consistently with this model before implementing separate adapters; they cannot weaken its semantic validation.
+  responsive_presentation:
+    initial_plan_region: Quarter/timezone, save/catalog state, known-conflict count, and incomplete/unverified count precede the scrollable plan details.
+    schedule_views: Grid and chronological list consume the same ScheduleReport; provide all instructional and supplied-exam weeks and a labeled unscheduled list.
+    actions: Keyboard-operable native controls, field-linked errors, explicit named confirmations, visible focus, and status announcements without stealing focus.
+    target_editor: Explain independent credit reuse across targets before save.
+    first_save: Explain same-profile access and clearing-browser-data loss before committing the first plan.
+    small_screen: Forms and chronological view reflow; only the time grid may scroll horizontally.
+  performance_mechanisms:
+    - CatalogSnapshot builds per-version identity/linkage and normalized search indexes once after admission.
+    - PlanAssessment interprets selections once per generation and shares the immutable facts with both evaluators.
+    - ScheduleEvaluator orders occurrences by start and examines only still-active overlapping candidates, preserving the exhaustive conflict contract.
+    - AcademicEvaluator computes per-canonical-course evidence once per assessment and reuses it across independently evaluated targets.
+    - The view renders one grid week at a time but retains access to every relevant week and the complete chronological result.
+    - Assessment scheduling may run off the UI thread only if measurement shows a need; no extra service or worker is required by the conceptual design.
+
+quality_attributes:
+  QR-01:
+    attribute: interactive_response
+    situation: Initialized session at the reference workload; student searches/filters or makes a plan edit.
+    required_response: Correct complete visible results, including recomputed checks for edits; pending until all displayed checks share a revision.
+    acceptance: At least 95 of 100 searches and 95 of 100 edits finish within 1 second from action to complete visible result.
+    accountable_owner: CAN-002
+    contributors: [CAN-001, CAN-004, CAN-008, CAN-009, CAN-010]
+    verification: T-012
+  QR-02:
+    attribute: saved_plan_opening
+    situation: Initialized session opens a maximum-size saved plan 100 times.
+    required_response: Complete schedule and diagnostic summary, not a loading placeholder.
+    acceptance: At least 95 openings complete within 2 seconds.
+    accountable_owner: CAN-002
+    contributors: [CAN-001, CAN-006, CAN-010, CAN-011]
+    verification: T-012
+  QR-03:
+    attribute: keyboard_and_assistive_access
+    situation: Student performs planning, recovery, and download actions with keyboard and a documented screen-reader/browser combination.
+    required_response: Named controls/states, visible logical focus, associated input errors, and announcements that do not steal focus.
+    acceptance: AT-01, AT-02, AT-06, and AT-08 complete without a pointing device and with the documented assistive setup.
+    accountable_owner: CAN-001
+    contributors: [CAN-002]
+    verification: T-010
+  QR-04:
+    attribute: readable_responsive_presentation
+    situation: All planning/recovery states at 200% zoom and 390 CSS-pixel width.
+    required_response: No hidden/overlapping controls or text; ordinary text contrast at least 4.5 to 1.
+    acceptance: Forms and chronological view require no horizontal scrolling; only the time grid may scroll horizontally.
+    accountable_owner: CAN-001
+    contributors: []
+    verification: T-010
+  QR-05:
+    attribute: privacy_boundary
+    situation: A plan contains identifiable private input in profile A while another profile and catalog/network traffic are inspected.
+    required_response: No discovery in profile B, public catalog, or transmission to unrelated third parties without student action.
+    acceptance: Identifiable sample input is absent from B/public payloads/network traffic; first-save notice explains same-profile access and clearing-data loss.
+    accountable_owner: CAN-012
+    contributors: [CAN-001, CAN-005, CAN-006, CAN-011, CAN-013]
+    verification: T-013
+  QR-06:
+    attribute: failure_integrity
+    situation: Interrupt an edit, catalog adoption, or save before success acknowledgment and reopen.
+    required_response: Recover the prior acknowledged revision or a complete newer revision with a durable receipt; never mixed inputs/catalog state.
+    acceptance: Interruption probes at every state-changing boundary preserve a complete revision; deliberate data clearing and device loss are excluded.
+    accountable_owner: CAN-011
+    contributors: [CAN-002, CAN-003, CAN-012]
+    verification: T-006
+  QR-07:
+    attribute: catalog_failure_continuity
+    situation: Required catalog retrieval fails on first use or after successful retention.
+    required_response: Unavailable state plus retry on first use; usable retained snapshot with visible age thereafter.
+    acceptance: Previously retained data supports inspection/editing without being presented as current.
+    accountable_owner: CAN-006
+    contributors: [CAN-001, CAN-005, CAN-012]
+    verification: T-002
+  QR-08:
+    attribute: first_use_success
+    situation: Five representative first-time undergraduate users receive at most a one-minute introduction and no task-specific hints.
+    required_response: Find three named courses, complete bundles, identify/resolve a conflict, check a target, save, and reopen.
+    acceptance: At least four users finish independently within 10 minutes; record completion and errors.
+    accountable_owner: CAN-001
+    contributors: [CAN-002]
+    verification: T-010
+  FR-24-save-latency:
+    attribute: saved_acknowledgment
+    situation: Successful edit under the reference conditions.
+    required_response: Visible durable saved acknowledgment for the accepted edit.
+    acceptance: Within 2 seconds; storage failure must produce an unsaved state rather than false success.
+    accountable_owner: CAN-002
+    contributors: [CAN-011, CAN-012]
+    verification: T-012
+  FR-16-initial-diagnostics:
+    attribute: diagnostic_visibility
+    situation: Initial plan viewport at 390x844 and 1280x800 CSS pixels at 100% zoom.
+    required_response: Known-conflict count and incomplete/unverified count visible before plan scrolling, with access to all details.
+    acceptance: Both viewport inspections pass; text/symbol labels supplement color.
+    accountable_owner: CAN-001
+    contributors: [CAN-008, CAN-010]
+    verification: T-010
+  common_conditions:
+    priority: All specified quality requirements are mandatory; no design trade-off relaxes a threshold.
+    reference_client: Four CPU cores, 8 GB RAM, current stable Chrome or Firefox at acceptance time; record versions and disable extensions.
+    reference_network: When an operation needs a network, 20 Mbps downstream, 5 Mbps upstream, and 100 ms round-trip latency.
+    timing_rule: Start at the user action; stop at correct complete visible output or saved acknowledgment as applicable. Errors, incomplete results, and timeouts are failures, not fast successes.
+    execution_status: These are verification obligations, not measured performance or completed user-study claims.
+
+capacity_ownership:
+  catalog:
+    owner: CAN-005
+    limits: {courses: 5000, sections: 20000, quarter_weeks_including_exams: 20}
+    rejection: Specific catalog capacity error; retain the current active catalog.
+  plan:
+    owner: CAN-003
+    limits: {distinct_courses: 40, selected_components: 200, personal_intervals: 100, coursework_records: 200, academic_targets: 50}
+    rejection: Specific field/collection capacity error; preserve the existing draft.
+  profile:
+    owner: CAN-011
+    limits: {active_saved_plans: 20}
+    rejection: Check within the transaction; preserve existing alternatives and keep summary recovery available.
+  no_added_limit: Do not impose extra catalog-unit, recurrence, or academic-rule limits merely to make a performance test pass.
+
+design_decisions:
+  DEC-001:
+    choice: Browser-local student application with separately published public catalogs.
+    basis: [A-02, A-05, QR-05, QR-07]
+    alternatives: [Account-backed server planning, browser-local planning]
+    rationale: Profile continuity and privacy require no account service or private server state; catalog publication is already a distinct actor responsibility.
+    cost: Profile clearing/device loss remain outside recovery guarantees; catalog content still needs an available publication location.
+  DEC-002:
+    choice: Immutable plan/catalog inputs with separately derived revision-tagged assessments.
+    basis: [FR-24, FR-27, QR-01, QR-06]
+    alternatives: [Mutable shared object graph, immutable inputs with explicit transitions]
+    rationale: Makes late-result rejection, independent alternatives, and recovery reproducible without saving stale judgments.
+    cost: Copies/retained versions consume storage and memory; measure rather than claiming zero cost.
+  DEC-003:
+    choice: One semantic owner per catalog relationship, temporal rule, academic judgment, and collection invariant.
+    basis: ["sections 4.2-4.4", FR-15, FR-20, FR-22, FR-28]
+    alternatives: [Checks inside each UI flow, delegated domain participants]
+    rationale: Prevents grid/export/target disagreement and keeps source policy changes localized.
+    cost: Explicit evidence envelopes and narrow collaboration contracts must remain synchronized.
+  DEC-004:
+    choice: Atomic revision comparison and complete record replacement with mutation receipts.
+    basis: [FR-24, FR-28, QR-06]
+    alternatives: [Last writer wins, merging arbitrary edits, revision comparison with explicit recovery]
+    rationale: Only explicit recovery preserves both students' same-profile tab intentions without inventing merge policy.
+    cost: Conflict recovery requires student choice; physical adapter conformance must be tested.
+  DEC-005:
+    choice: Atomic catalog publication and explicit per-plan version adoption.
+    basis: [FR-03, FR-27]
+    alternatives: [Mutate one live catalog in place, keep immutable versions with a current manifest]
+    rationale: Avoids mixed versions, preserves old saved interpretations, and supports complete impact review.
+    cost: Retention uses space; public and local immutable identity must agree.
+  DEC-006:
+    choice: Direct tagged rule/meeting forms, with no general rule plugin framework.
+    basis: ["sections 4.2-4.4", FR-20, FR-21]
+    alternatives: [General interpreted policy language, direct implementation of the supported forms]
+    rationale: Known bounded forms are sufficient; unsupported policies already have a manual-review outcome.
+    cost: Supporting a new semantic rule requires a requirements change and focused evaluator/validator tests.
+  DEC-007:
+    choice: Shared schedule/report data for grid, chronological presentation, and text export.
+    basis: [FR-14, FR-15, FR-29, QR-03, QR-04]
+    alternatives: [Independent view-specific computation, shared report with presentation-specific formatting]
+    rationale: Makes equivalent accessible views and a truthful recovery artifact possible without duplicated policy.
+    cost: Report fields are an explicit contract; presentation changes must preserve their meaning.
+  DEC-008:
+    choice: Abortable catalog reads with one attempt per user load/retry action and a 10-second adapter timeout.
+    basis: [QR-07]
+    classification: Reversible operational design default; it is not an added stakeholder response-time promise.
+    alternatives: [Unbounded transport wait, bounded attempt with visible retry and retained fallback]
+    rationale: A failed public dependency reaches a named recovery state instead of leaving the interaction pending indefinitely.
+    cost: A slow but eventually successful source may require retry; initialized-session timing thresholds remain unchanged.
+
+variation_points:
+  HOT-001:
+    varies: Published catalog data and a plan's adopted catalog version.
+    evidence: [FR-03, FR-27]
+    examples: [canceled selected section, changed meeting time, removed allowed unit choice]
+    changing_actor_and_time: Maintainer publishes; student chooses adoption at runtime.
+    focus: [RSP-015, RSP-017, RSP-020, RSP-011]
+    scope: [CAN-005, CAN-006, CAN-003, CAN-010, CAN-011]
+    mechanism: Validated immutable snapshots and an exact reviewed-adoption token.
+    invariant: Existing choices and uncertainty survive; no partial or silent adoption.
+    invalid_extension: Adding enrollment authority or scraping private institutional records is outside this seam.
+    conformance: T-008
+    economy: Versioned data and one adoption operation; no runtime plugin registry or distributed event bus.
+  HOT-002:
+    varies: Student-defined target kind, threshold, and eligible course set.
+    evidence: [FR-21, FR-22]
+    examples: [two-course count target, eight-unit target, overlapping targets sharing one canonical course]
+    changing_actor_and_time: Student edits within a plan.
+    focus: [RSP-009, RSP-026]
+    scope: [CAN-003, CAN-009, CAN-001]
+    mechanism: Tagged target values with one bounded evaluator.
+    invariant: Each target counts canonical courses once and explains completed/projected/unknown contributions.
+    invalid_extension: Institutional exclusions, grade thresholds, or arbitrary formulas require new requirements before automated support.
+    conformance: T-011
+    economy: Direct data variation; introducing a policy plugin mechanism has no current benefit.
+  HOT-003:
+    varies: Physical persistence and timezone library implementations.
+    evidence: [QR-03, QR-06, "section 4.3"]
+    changing_actor_and_time: Implementer during build or platform maintenance, not the student at runtime.
+    focus: [RSP-021, RSP-022, RSP-034, RSP-035]
+    scope: [CAN-007, CAN-012]
+    mechanism: Narrow injected capabilities with conformance tests; one initial implementation each.
+    invariant: Identical temporal decisions and atomic profile semantics.
+    invalid_extension: A network-synchronized profile store would change the product boundary and cannot be substituted without revisiting requirements.
+    conformance: [T-004, T-006, T-007]
+    economy: Testable boundary isolation rather than a runtime provider-selection framework.
+
+requirement_traceability:
+  FR-01: {owner: "CAN-006", support: [CAN-001, CAN-002], responsibilities: [RSP-018], stories: [COL-001], checks: [AT-08, T-002]}
+  FR-02: {owner: "CAN-006", support: [CAN-001], responsibilities: [RSP-019], stories: [COL-001], checks: [AT-04, T-002]}
+  FR-03: {owner: "CAN-005", support: [CAN-007], responsibilities: [RSP-015, RSP-017], stories: [COL-007], checks: [AT-08, T-001]}
+  FR-04: {owner: "CAN-004", support: [CAN-001, CAN-002], responsibilities: [RSP-014], stories: [COL-001], checks: [AT-01, AT-08, T-002]}
+  FR-05: {owner: "CAN-004", support: [CAN-001], responsibilities: [RSP-012], stories: [COL-001], checks: [AT-03, AT-04, T-002]}
+  FR-06: {owner: "CAN-003", support: [CAN-002, CAN-011], responsibilities: [RSP-009, RSP-031], stories: [COL-002, COL-005], checks: [AT-08, T-003, T-007]}
+  FR-07: {owner: "CAN-003", support: [CAN-004], responsibilities: [RSP-009, RSP-013], stories: [COL-002], checks: [AT-03, T-003]}
+  FR-08: {owner: "CAN-003", support: [CAN-004], responsibilities: [RSP-009, RSP-013], stories: [COL-002], checks: [AT-03, T-003]}
+  FR-09: {owner: "CAN-003", support: [CAN-004], responsibilities: [RSP-009], stories: [COL-002], checks: [AT-08, T-003]}
+  FR-10: {owner: "CAN-009", support: [CAN-001], responsibilities: [RSP-027], stories: [COL-002], checks: [AT-01, T-011]}
+  FR-11: {owner: "CAN-003", support: [CAN-007], responsibilities: [RSP-009, RSP-021], stories: [COL-002], checks: [AT-02, AT-08, T-004]}
+  FR-12: {owner: "CAN-003", support: [CAN-002], responsibilities: [RSP-010, RSP-006], stories: [COL-008], checks: [AT-02, T-003]}
+  FR-13: {owner: "CAN-002", support: [CAN-003, CAN-011], responsibilities: [RSP-005], stories: [COL-008], checks: [T-003, T-006]}
+  FR-14: {owner: "CAN-008", support: [CAN-001, CAN-007], responsibilities: [RSP-024, RSP-001], stories: [COL-002], checks: [AT-02, AT-04, T-010]}
+  FR-15: {owner: "CAN-008", support: [CAN-007], responsibilities: [RSP-023], stories: [COL-002], checks: [AT-02, AT-07, T-004]}
+  FR-16: {owner: "CAN-001", support: [CAN-010], responsibilities: [RSP-001], stories: [COL-002], checks: [T-010]}
+  FR-17: {owner: "CAN-008", support: [CAN-004, CAN-001], responsibilities: [RSP-023], stories: [COL-002], checks: [AT-04, T-004]}
+  FR-18: {owner: "CAN-004", support: [CAN-001, CAN-008, CAN-009], responsibilities: [RSP-012, RSP-013], stories: [COL-002, COL-006], checks: [AT-07, T-008]}
+  FR-19: {owner: "CAN-003", support: [CAN-004], responsibilities: [RSP-009], stories: [COL-002], checks: [AT-05, T-011]}
+  FR-20: {owner: "CAN-009", support: [CAN-001], responsibilities: [RSP-025], stories: [COL-002], checks: [AT-05, T-011]}
+  FR-21: {owner: "CAN-003", support: [CAN-001], responsibilities: [RSP-009], stories: [COL-002], checks: [AT-05, AT-08, T-003]}
+  FR-22: {owner: "CAN-009", support: [CAN-001], responsibilities: [RSP-026], stories: [COL-002], checks: [AT-05, T-011]}
+  FR-23: {owner: "CAN-009", support: [CAN-010, CAN-001], responsibilities: [RSP-025, RSP-026, RSP-027, RSP-029], stories: [COL-002], checks: [AT-01, AT-04, AT-05, T-011]}
+  FR-24: {owner: "CAN-011", support: [CAN-002, CAN-012], responsibilities: [RSP-031, RSP-033], stories: [COL-003], checks: [AT-01, AT-06, T-006, T-012]}
+  FR-25: {owner: "CAN-011", support: [CAN-002, CAN-003], responsibilities: [RSP-030, RSP-032], stories: [COL-005, COL-008], checks: [AT-06, T-007]}
+  FR-26: {owner: "CAN-002", support: [CAN-001, CAN-011, CAN-013], responsibilities: [RSP-005, RSP-007], stories: [COL-004], checks: [AT-06, T-006, T-009]}
+  FR-27: {owner: "CAN-006", support: [CAN-002, CAN-003, CAN-011], responsibilities: [RSP-020, RSP-011], stories: [COL-006], checks: [AT-07, T-008]}
+  FR-28: {owner: "CAN-011", support: [CAN-002, CAN-012], responsibilities: [RSP-031, RSP-033], stories: [COL-005], checks: [AT-06, T-007]}
+  FR-29: {owner: "CAN-013", support: [CAN-002], responsibilities: [RSP-036, RSP-037], stories: [COL-004], checks: [AT-06, T-009]}
+  QR-01: {owner: "CAN-002", support: [CAN-001, CAN-004, CAN-010], responsibilities: [RSP-004, RSP-003], stories: [COL-001, COL-002], checks: [T-012]}
+  QR-02: {owner: "CAN-002", support: [CAN-001, CAN-006, CAN-010, CAN-011], responsibilities: [RSP-004, RSP-030], stories: [COL-003], checks: [T-012]}
+  QR-03: {owner: "CAN-001", support: [CAN-002], responsibilities: [RSP-001, RSP-002], stories: [COL-008], checks: [T-010]}
+  QR-04: {owner: "CAN-001", support: [CAN-008], responsibilities: [RSP-001], stories: [COL-008], checks: [T-010]}
+  QR-05: {owner: "CAN-012", support: [CAN-001, CAN-005, CAN-006, CAN-011, CAN-013], responsibilities: [RSP-035, RSP-017], stories: [COL-003, COL-007], checks: [T-013]}
+  QR-06: {owner: "CAN-011", support: [CAN-002, CAN-003, CAN-012], responsibilities: [RSP-031, RSP-034], stories: [COL-003, COL-004, COL-005, COL-006], checks: [T-006, T-007, T-008]}
+  QR-07: {owner: "CAN-006", support: [CAN-001, CAN-005, CAN-012], responsibilities: [RSP-018], stories: [COL-001], checks: [T-002]}
+  QR-08: {owner: "CAN-001", support: [CAN-002], responsibilities: [RSP-001, RSP-002], stories: [COL-001, COL-002, COL-003], checks: [T-010]}
+  normative_sections:
+    scope_and_assumptions: {source: "sections 1-3", design: [context, DEC-001, candidate_disposition]}
+    entities_and_catalog: {source: "sections 4.1-4.2", design: [information_model, CTR-001, realization.catalog_exchange]}
+    time_rules: {source: "section 4.3", design: [domain_policies.schedule, CTR-004]}
+    academic_rules: {source: "section 4.4", design: [domain_policies.academic, T-011]}
+    capacity_and_environment: {source: "section 6", design: [capacity_ownership, quality_attributes.common_conditions]}
+    acceptance_and_change: {source: "sections 7-8", design: [verification_plan, change_control]}
+
+verification_plan:
+  status: Specified conformance checks; runtime tests and student studies have not been run.
+  fixture: Use the synthetic quarter and TEST001/101-105 data in requirements.md section 7.1; never substitute real institutional claims.
+  tests:
+    T-001:
+      owner: CAN-005
+      check: Reject every invalid mandatory field/reference/unit/linkage/rule/time/capacity case with record paths; accept explicit optional unknowns and manual-review source text.
+      failure_probe: Interrupt staging, fail activation, race two manifest updates, and lose an activation receipt; verify a complete old or new active version and an accurate outcome.
+    T-002:
+      owner: CAN-006
+      check: Exercise no-quarter, first-use failure, retained fallback, exact-version open, >24-hour age, demo labeling, and retry.
+      search_probe: Verify trimmed insensitive code/title/instructor search, subject conjunction, same-section instructor/availability matching, deterministic ordering, and clear-filter empty result.
+    T-003:
+      owner: CAN-003
+      check: Run AT-03/AT-08 plus name lengths and duplicates, all per-plan capacities, alias no-op, invalid variable units, unset unit target, independent copy, remove/undo expiration, and fixed-quarter switching.
+      assertion: Rejections preserve unrelated values; partial drafts are allowed and incomplete credit is not fabricated.
+    T-004:
+      owner: CAN-008
+      check: Run AT-02/AT-04/AT-07 plus within-course overlap, exams, overnight overlap, endpoint adjacency, nonoverlapping dates, holidays/replacements, DST ambiguity/nonexistence, and foreign device timezone.
+      assertion: No personal-personal or canceled/removed-section conflicts; every real pair and every relevant incompleteness reason is represented.
+    T-005:
+      owner: CAN-002
+      check: Delay an earlier assessment until after a later one; force either evaluator to fail; edit while assessment is pending.
+      assertion: No stale or partial current report; input survives; all visible check categories have one AssessmentKey.
+    T-006:
+      owner: CAN-011
+      check: Interrupt before/during/after commit, deny storage, exhaust quota, and lose completion notification; reopen and reconcile receipts.
+      assertion: Complete acknowledged input/catalog pairs only; no false saved signal, stale replay, database clearing, or lost in-session input.
+    T-007:
+      owner: CAN-011
+      check: Race same-plan saves, duplicate names, the twentieth plan slot, rename versus rename, and delete versus a stale save.
+      generation_probe: Queue B then C then B while the first B write is in flight; its receipt must not mark the last B saved or allow queued C to overwrite an acknowledged current state.
+      assertion: Atomic decisions, explicit conflict recovery, no resurrection, and download available when separate-copy capacity is exhausted.
+    T-008:
+      owner: CAN-006
+      check: Run AT-07 plus stale preview, invalidated units, removed history/target identities, new equivalent identities with conflicting saved choices/history, and save failure during adoption.
+      assertion: Preserve unresolved originals, count effective canonical identities at most once, infer no ambiguous credit, and keep prior durable version complete.
+    T-009:
+      owner: CAN-013
+      check: Export saved, unsaved, pending-assessment, failed-assessment, conflicting, and capacity-blocked drafts; reconstruct every FR-29 input from the text.
+      assertion: Correct save/check state, all exceptions/unresolved inputs retained, UTF-8 text, no implicit save/upload, and failed download leaves recovery open.
+    T-010:
+      owner: CAN-001
+      check: Execute exact QR-03/QR-04/QR-08 procedures and FR-16 viewport checks, including error/recovery controls and pre-save disclosures.
+      evidence: Record keyboard/screen-reader setup, viewport/zoom, contrast results, participant task times, success counts, and observed errors.
+    T-011:
+      owner: CAN-009
+      check: Run AT-01/AT-05 plus all three-valued all/any combinations, completed-versus-projected corequisites, unsupported branches, retakes, overlapping targets, unknown history/units, removed identities, and count targets with unresolved units.
+      assertion: Exact contribution/status order and reasons; partial/full/waitlisted/canceled variants distinguish selected totals from projected credit; categories never clear each other's warnings.
+    T-012:
+      owner: CAN-002
+      check: Run the exact QR-01/QR-02 and FR-24 timing checks at all stated capacity dimensions and reference client/network conditions.
+      evidence: Record browser/build/dataset identifiers and action-to-complete samples; errors and incomplete reports fail the sample.
+      follow_up: If measurements fail, optimize within existing ownership boundaries and rerun affected scenarios; do not weaken the requirements.
+    T-013:
+      owner: CAN-012
+      check: Use distinct browser profiles, inspect all planning/publication payloads and network activity, and exercise text containing executable markup in labels/catalog content.
+      assertion: Private data remains in the originating profile or explicit download; source strings render as text, and catalog publication has no private-state input path.
+  acceptance_scenario_mapping:
+    AT-01: [COL-001, COL-002, COL-003, T-011]
+    AT-02: [COL-002, COL-008, T-004]
+    AT-03: [COL-002, T-003]
+    AT-04: [COL-001, COL-002, T-002, T-004]
+    AT-05: [COL-002, T-011]
+    AT-06: [COL-003, COL-004, COL-005, COL-008, T-006, T-007, T-009]
+    AT-07: [COL-006, T-004, T-008]
+    AT-08: [COL-001, COL-002, COL-005, COL-007, T-001, T-002, T-003, T-007]
+
+residual_risks:
+  RSK-001:
+    issue: No implementation measurements establish response-time or browser-transaction behavior yet.
+    owner: CAN-002
+    next_evidence: T-006, T-007, and T-012 on both browser families at the specified workload.
+    revisit_trigger: Any stale receipt, partial recovery, or failed performance threshold.
+    disposition: Implementation validation obligation; no requirement is relaxed.
+  RSK-002:
+    issue: Accessible presentation and first-use usability require actual interface and student-study evidence.
+    owner: CAN-001
+    next_evidence: T-010 with the exact requirements' participant and timing criteria.
+    revisit_trigger: Any inaccessible recovery path or fewer than four successful first-time users.
+    disposition: Validation remains pending until a UI exists.
+  RSK-003:
+    issue: Catalog source, hosting/publication permissions, and storage quota behavior depend on the deployment.
+    owner: CAN-006
+    next_evidence: Select an authorized catalog source and publication adapter; run acceptance/retention/denial probes before institutional use.
+    revisit_trigger: Unavailable mandatory catalog facts or a distribution adapter unable to publish atomically.
+    disposition: No live integration or extra institutional policy is assumed; synthetic fixture supports implementation meanwhile.
+  RSK-004:
+    issue: Requirements do not bound meeting-pattern count or academic-expression depth within the stated catalog/plan counts.
+    owner: CAN-010
+    next_evidence: Performance fixtures must document these dimensions and include representative dense patterns; obtain a requirements decision if arbitrary inputs defeat the stated bound.
+    revisit_trigger: A supported input shape makes the required response times unattainable within the reference workload.
+    disposition: No new limit is silently added by the design.
+
+change_control:
+  authority: Update requirements.md first when externally visible behavior or supported scope changes.
+  design_updates: Preserve IDs; update affected ownership, contracts, collaboration stories, realization, and traceability together.
+  implementation_conformance: Map each RSP and FR/QR to implementation elements and verification results; unexplained redistribution of policy is a deviation.
+  artifact_boundary: This file is the canonical structured design; diagrams or other views must be derived from it rather than independently redefine it.
+
+design_review:
+  status: complete
+  verdict: Ready to advance to implementation; product acceptance still requires the specified runtime and user validation.
+  evidence_scope: Requirements coverage, conceptual scenario walkthroughs, and structured-model validation; not runtime or user-study results.
+  stopping_condition: All core responsibilities owned, consequential collaborations reachable, material contradictions repaired, and all requirement/acceptance references covered.
+  coverage: {functional_requirements: 29, quality_requirements: 8, acceptance_scenarios: 8, components: 13, responsibilities: 37}
+  independent_review:
+    requirements_coverage: No material remaining contradictions or added product scope.
+    responsibility_design: All hard gates passed after targeted repairs and fresh parsed-model checks.
+    quality_score: 96
+    rated_weight: 100
+    evidence_coverage_score: 92.5
+    score_scale: 100
+    limitation: Confidence applies to the proposed design and analytical probes, not to an unbuilt implementation.
+  gates:
+    V1_context: {result: pass, evidence: "context and requirements_baseline distinguish authority, assumptions, and design choices"}
+    V2_coverage: {result: pass, evidence: "all 37 FR/QR entries and normative sections map to owners; system_responsibilities.unassigned is empty"}
+    V3_coherence: {result: pass, evidence: "components assign each responsibility once and separate session, domain, assessment, and storage authority"}
+    V4_dynamics: {result: pass, evidence: "COL-001 through COL-008 reach their required outcomes with explicit alternate paths"}
+    V5_reachability: {result: pass, evidence: "every parsed story edge names a declared collaborator and every cited RSP belongs to its receiver"}
+    V6_control: {result: pass, evidence: "CTL-001 through CTL-004 and session_state_machines locate sequencing and decision ownership"}
+    V7_boundaries: {result: pass, evidence: "neighborhoods, realization.module_rules, and trust_and_failure_policies restrict cross-boundary authority"}
+    V8_reliability: {result: pass, evidence: "CTR-001 through CTR-010 and POL-001 through POL-008 define failure, recovery, and resulting state"}
+    V9_flexibility: {result: pass, evidence: "HOT-001 through HOT-003 have requirements-backed variation, fixed invariants, and conformance checks"}
+    V10_traceability: {result: pass, evidence: "requirement_traceability and acceptance_scenario_mapping contain all required IDs with valid references"}
+    V11_handoff: {result: pass, evidence: "realization and verification_plan preserve conceptual ownership and identify remaining implementation evidence"}
+  repaired_risks:
+    - Current-generation save acknowledgment cannot be inferred from an older equal-content receipt.
+    - Pending assessment does not block reconstructable recovery download or permit stale check results.
+    - Temporal evaluation receives the full authoritative quarter envelope.
+    - Catalog identity changes preserve conflicting source history without inventing completed credit.
+    - Publication distinguishes definite failure from uncertain activation and verifies its aftereffect.
+    - Name collisions, conflicting tabs, and catalog adoption preserve unrelated student input.
