@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "quarters": [
+    {
+      "id": "synthetic-2026-fall",
+      "name": "Synthetic Fall 2026",
+      "version": "fixture-v1",
+      "url": "versions/d0f6963005ed59f0b36df3e2c81b0ccbfa31a879e18678ce88d8b5d8c2f7a11a.json",
+      "digest": "eaca1311e45756c79c0ad4dba5db29c994c8f19a0a4084ed50eeb56e2ae30567"
+    },
+    {
+      "id": "synthetic-2026-winter",
+      "name": "Synthetic Winter 2026",
+      "version": "fixture-v1",
+      "url": "versions/1902c461ddd356300462f76c51a8f3af98ba2164db9eec8065cb791ad6aa1425.json",
+      "digest": "82f4bda8bf1d03a986c91772be6e228d0a431774b8640aa43a6ce9abbdc7ec19"
+    }
+  ]
+}
